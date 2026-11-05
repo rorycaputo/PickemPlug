@@ -1,6 +1,6 @@
 from datetime import date, datetime, time, timedelta
 
-MNF_KICKOFF = time(19, 30)  # 7:30 PM Central
+MNF_KICKOFF = time(20, 30)  # 8:30 PM Eastern
 
 
 def _day_after_super_bowl(cal_year: int) -> date:

@@ -5,6 +5,7 @@ import apis
 import util
 import statistics
 import math
+import date_util
 
 OUTPUT_FILE = 'resources/odds_shark.html'
 
@@ -71,9 +72,11 @@ def get_odds_shark_spreads(fetch=True):
     all_events = []
     spreads_table = odds_shark_html.xpath('//table[@id="spread-table"]')[0]
     for event in spreads_table.xpath(".//tr[starts-with(@class, 'oddsGameRow')]"):
+        date_cell_result = []
         date_cell_result = event.xpath('.//div[@class="td-cell game-time"]')
         date_cell = date_cell_result[0] if date_cell_result else None
         if date_cell is not None:
+            date_spans = []
             date_spans = date_cell.xpath('.//span/text()')
             # format example: <span>Sep 17,&nbsp;</span><span>20:15</span>
             date_string = "{} {}".format(date_spans[0].replace('\xa0', ' ').strip().rstrip(','), date_spans[1].strip())
@@ -85,7 +88,7 @@ def get_odds_shark_spreads(fetch=True):
         else:
             event_date = current_date - timedelta(days=1)
 
-        if current_date <= event_date <= tuesday: # Todo add first week override
+        if current_date <= event_date and event_date <= date_util.get_nfl_week_end(date_util.get_nfl_week(current_date)):
             events_row = []
             for participant_name in event.xpath('.//strong/text()'):
                 events_row.append({'team': participant_name, 'spreads': [], 'average_spread': None, 'average_mode_odds': None})

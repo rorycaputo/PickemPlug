@@ -24,7 +24,7 @@ def get_pickem_html(u, p):
             print(f'Base64 decoding of password failed. Did you enter it?')
             raise err
 
-        continue_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Continue')]")
+        continue_button = driver.find_element(By.XPATH, "//button[@type='submit']")
         continue_button.click()
 
         wait = WebDriverWait(driver, 20)

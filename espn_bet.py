@@ -40,7 +40,7 @@ def make_api_calls():
     espn_chunk, session = apis.espn_chunk_get(espn_chunk_url)
     startup_sha = get_sha_token(espn_chunk, 'Startup')
     marketplace_sha = get_sha_token(espn_chunk, 'CompetitionPageSectionLinesTabNode')
-    bearer_token_resp, session = apis.espn_startup_get(startup_sha, session)
+    bearer_token_resp, session = apis.espn_startup_get(startup_sha, session) # If this is giving 403s try updating x-app-version headers
     bearer_token = get_bearer_token(bearer_token_resp)
     espn_marketplace_resp, session = apis.espn_marketplace_get(marketplace_sha, bearer_token, session)
     if espn_marketplace_resp is not None:
@@ -62,7 +62,7 @@ def get_espn_bet_lines(fetch=True):
     espn_spread_data = []
     for marketplaceShelfChild in marketplaceShelfChildren:
         for market in marketplaceShelfChild['pagedMarkets']:
-            if market['name'] == 'Game Spread':
+            if market['name'] == 'Game Spread' and not market['status'] == 'CLOSED': # Todo find the actual time
                 for selection in market['selections']:
                     espn_spread_data.append({
                         'team': selection['participant']['mediumName'],

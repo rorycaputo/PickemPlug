@@ -12,8 +12,9 @@ import csv_util
 import html_util
 
 # todo get CBS odds at time of go-live
+# todo exclude DK and ESPN games that have started
 
-#  todo see if we can just exclude if its false and there's no file saved
+#  todo see if we can just exclude if its false and there's no file saved (or add another bypass setting)
 FETCH_PICKEM = True
 FETCH_DRAFKKINGS = True
 FETCH_ESPNBET = True
@@ -37,7 +38,7 @@ HTML_HEADER_TEXT = 'Week '
 VALUE_DIFF_DISCLAIMER = '* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.'
 COVERS_DISCLAIMER = '\u2020 From Covers.com'
 
-OVERRIDE_CSV_DATA = None
+OVERRIDE_CSV_DATA = None # Make it so the week number output is accurate
 
 CSV_OUTPUT_FILENAME = './out/spreads_output'
 HTML_READOUT_FILENAME = './out/readout.html'
@@ -53,6 +54,7 @@ def main():
 
     final_tabulate_table, final_tabulate_dict = build_table(pickem_lines, dk_lines, espn_lines, os_lines)
     print(final_tabulate_table)
+    # todo Average excluding max and min outliers?
     # todo actual timestamps for each book
     # todo actual csv timestamp for 'Generated' text on html
     # todo format for email
@@ -74,14 +76,21 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
     final_table = []
     for line in pickem_lines:
         dk_team = get_team_from_map(line['team'], 'd')
+
+        final_event_output = {
+            'Team': dk_team,
+            'PickEm': line['spread'],
+            AVG_ALL: '',
+        }
+
         dk_record = get_record(dk_team, dk_lines)
         if dk_record is not None:
             dk_spread_diff = get_spread_diff(line['spread'], dk_record['spread'])
             dk_value_diff = get_value_diff(line['spread'], dk_record['spread'], dk_record['odds'])['cents_gap']
             dk_record['diff'] = dk_value_diff
-        else:
-            dk_spread_diff = 0
-            dk_record = {'spread': '999', 'odds': '-110', 'diff': '0'}
+            final_event_output[DRAFTKINGS_SPREAD_HEADER] = f'{dk_record["spread"]}' #{get_spread_display_arrow(dk_spread_diff)}'
+            final_event_output[DRAFTKINGS_ODDS_HEADER] = f'{dk_record["odds"]}' #{get_odds_display_arrow(dk_record["odds"])}'
+            final_event_output[DRAFTKINGS_DIFF_HEADER] = f'{dk_record["diff"]}{get_cents_display_arrow(dk_record["diff"])}'
 
         espn_team = get_team_from_map(line['team'], 'e', 'd') # Names are the same as Draft Kings
         espn_record = get_record(espn_team, espn_lines)
@@ -89,9 +98,9 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
             espn_spread_diff = get_spread_diff(line['spread'], espn_record['spread'])
             espn_value_diff = get_value_diff(line['spread'], espn_record['spread'], espn_record['odds'])['cents_gap']
             espn_record['diff'] = espn_value_diff
-        else:
-            espn_spread_diff = 0
-            espn_record = {'spread': '999', 'odds': '-110', 'diff': '0'}
+            final_event_output[ESPNBET_SPREAD_HEADER] = f'{espn_record["spread"]}' #{get_spread_display_arrow(espn_spread_diff)}'
+            final_event_output[ESPNBET_ODDS_HEADER] = f'{espn_record["odds"]}' #{get_odds_display_arrow(espn_record["odds"])}'
+            final_event_output[ESPNBET_DIFF_HEADER] = f'{espn_record["diff"]}{get_cents_display_arrow(espn_record["diff"])}'
 
         os_team = get_team_from_map(line['team'], 'o')
         os_record = get_record(os_team, os_lines)
@@ -100,26 +109,9 @@ def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
                 os_spread_diff = get_spread_diff(line['spread'], os_spread['spread'])
                 os_value_diff = get_value_diff(line['spread'], os_spread['spread'], os_spread['odds'])['cents_gap']
                 os_spread['diff'] = os_value_diff
-        else:
-            os_spread_diff = 0
-            os_record = {'team': os_team, 'spreads': []}
-
-        final_event_output = {
-            'Team': dk_team,
-            'PickEm': line['spread'],
-            AVG_ALL: '',
-            DRAFTKINGS_SPREAD_HEADER: f'{dk_record["spread"]}', #{get_spread_display_arrow(dk_spread_diff)}',
-            DRAFTKINGS_ODDS_HEADER: f'{dk_record["odds"]}', #{get_odds_display_arrow(dk_record["odds"])}',
-            DRAFTKINGS_DIFF_HEADER: f'{dk_record["diff"]}{get_cents_display_arrow(dk_record["diff"])}',
-            ESPNBET_SPREAD_HEADER: f'{espn_record["spread"]}', #{get_spread_display_arrow(espn_spread_diff)}',
-            ESPNBET_ODDS_HEADER: f'{espn_record["odds"]}', #{get_odds_display_arrow(espn_record["odds"])}',
-            ESPNBET_DIFF_HEADER: f'{espn_record["diff"]}{get_cents_display_arrow(espn_record["diff"])}',
-        }
-
-        for spread in os_record['spreads']:
-            final_event_output[f'{spread["book"]}\u2020 {SPREAD_HEADER}'] = f'{spread["spread"]}' #{get_spread_display_arrow(spread["diff"])}'
-            final_event_output[f'{spread["book"]}\u2020 {ODDS_HEADER}'] = f'{spread["odds"]}' #{get_odds_display_arrow(spread["odds"])}'
-            final_event_output[f'{spread["book"]}\u2020 {DIFF_HEADER}'] = f'{spread["diff"]}{get_cents_display_arrow(spread["diff"])}'
+                final_event_output[f'{os_spread["book"]}\u2020 {SPREAD_HEADER}'] = f'{os_spread["spread"]}' #{get_spread_display_arrow(spread["diff"])}'
+                final_event_output[f'{os_spread["book"]}\u2020 {ODDS_HEADER}'] = f'{os_spread["odds"]}' #{get_odds_display_arrow(spread["odds"])}'
+                final_event_output[f'{os_spread["book"]}\u2020 {DIFF_HEADER}'] = f'{os_spread["diff"]}{get_cents_display_arrow(os_spread["diff"])}'
 
         average_diff_lambda = lambda event: (lambda diff_keys: sum(get_diff_from_table(event, k) for k in diff_keys) / len(diff_keys) if diff_keys else 0)(
             [k for k in event.keys() if (k.endswith(DIFF_HEADER) and not k == AVG_ALL)]
@@ -383,18 +375,19 @@ def get_odds_display_arrow(odds):
 
 def get_cents_display_arrow(cents_diff):
     display_arrow = ''
-    if float(cents_diff) >= 30:
-        display_arrow = '\033[92m \u2B9D\033[00m'
-    elif float(cents_diff) >= 15:
-        display_arrow = ' \u2B9D'
-    elif float(cents_diff) >= 5:
-        display_arrow = ' ^'
-    elif float(cents_diff) <= -30:
-        display_arrow = '\033[91m \u2B9F\033[00m'
-    elif float(cents_diff) <= -15:
-        display_arrow = ' \u2B9f'
-    elif float(cents_diff) <= -5:
-        display_arrow = ' v'
+    if cents_diff is not None:
+        if float(cents_diff) >= 30:
+            display_arrow = '\033[92m \u2B9D\033[00m'
+        elif float(cents_diff) >= 15:
+            display_arrow = ' \u2B9D'
+        elif float(cents_diff) >= 5:
+            display_arrow = ' ^'
+        elif float(cents_diff) <= -30:
+            display_arrow = '\033[91m \u2B9F\033[00m'
+        elif float(cents_diff) <= -15:
+            display_arrow = ' \u2B9f'
+        elif float(cents_diff) <= -5:
+            display_arrow = ' v'
 
     return display_arrow
 

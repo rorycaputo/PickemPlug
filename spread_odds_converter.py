@@ -7,6 +7,8 @@ at a different point spread. Half-point moves near football's "key numbers"
 elsewhere, because those margins concentrate real probability mass (field
 goals, touchdowns, and combinations of them).
 
+See bottom of file for other considerations.
+
 SOURCE OF THE WEIGHTS
 ----------------------
 MOV_FREQUENCY_PCT below is not a guess or a rule of thumb -- it's computed
@@ -240,3 +242,61 @@ if __name__ == "__main__":
     avg, converted = average_odds_across_spreads(quotes, target_spread=-7)
     print("\nConverted to -7:", converted)
     print("Averaged odds at -7:", avg)
+
+"""
+Yes — quite a few. The frequency table treats every game as drawn from the 
+same distribution, and that's a simplification in several ways:
+
+The key numbers aren't fixed — they shift with the game environment
+The 3/7 dominance is strongest in low-scoring, defensive games. In 
+shootouts (high total, dome, pass-heavy offenses), scoring is more granular 
+and spread across more numbers, so 3 and 7 matter less. Wind/snow games 
+compress scoring the other way and make 3 matter even more. A more careful 
+model would weight the key-number table by the game's total, not use one 
+static table for every game.
+
+Adjacent key numbers interact, not just individually
+The reason NFL teasers standardize on 6 points is that it's specifically 
+calibrated to jump both 3 and 7 at once. If you're chaining conversions 
+across several key numbers in one move (e.g., pricing a spread move from 
+-2.5 all the way to -7.5), the combined cost isn't perfectly additive — the 
+correlation between "won by exactly 3" and "won by exactly 7" isn't zero 
+(both are field-goal/touchdown-driven), so summing independent per-number 
+costs slightly overstates the true joint cost over long ranges.
+
+The distribution has drifted over time
+The 2015 rule change moving the extra point back increased missed XPs 
+meaningfully, which nudges probability mass between 6/7/8-point margins (a 
+missed XP turns a "normal" 7-point TD win into 6; a 2-point conversion 
+attempt turns it into 8). Also, the league's gotten more pass-heavy and 
+higher-scoring over the last decade, which slightly flattens the whole curve
+ relative to older run-heavy eras. A table built on data from 10+ years ago 
+will overstate today's key-number effect somewhat.
+
+Garbage time reinforces rather than dilutes key numbers
+You might think garbage-time scores (backdoor covers, prevent-defense TDs) 
+would smooth the distribution out, but in practice trailing offenses scoring
+ late often converge toward exactly a field goal or a score that closes the 
+gap to a touchdown — so garbage time tends to add mass right back onto 3 and
+ 7 rather than randomizing it away.
+
+Market/liability effects aren't in the true-probability model at all
+Real sportsbook pricing isn't purely a function of "what's the fair 
+probability of this margin" — it also reflects which side has more 
+money/liability on it. A book might shade price away from a key number 
+specifically because of lopsided public action, independent of what the 
+historical distribution says. So actual market-observed cents-per-half-point
+ can diverge from the "true" distribution-implied cost, especially close to 
+kickoff.
+
+Overtime adds a small but real wrinkle
+Regular-season OT is first-score-wins (with some conditions), which adds 
+extra probability mass concentrated at small margins — a FG in OT is a very 
+common way to produce an exact 3-point final margin, on top of 
+regulation-driven 3s.
+
+If you wanted to get more rigorous than the static table, the most 
+impactful upgrade would probably be conditioning the key-number weights on 
+the game total (over/under) — that's the single biggest lever on how "peaky"
+ the distribution actually is for any given matchup.
+"""
