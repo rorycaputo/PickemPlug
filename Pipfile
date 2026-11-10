@@ -7,10 +7,10 @@ name = "pypi"
 tabulate = "*"
 requests = "*"
 lxml = "*"
-selenium = "*"
 brotli = "*"
 
 [dev-packages]
+selenium = "*"
 
 [requires]
 python_version = "3.10"

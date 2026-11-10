@@ -5,7 +5,7 @@ Compares your CBS Pickem spreads against sportsbook lines and writes a CSV and a
 ## Setup
 
 ```
-pipenv install
+pipenv install --dev
 ```
 
 ## Run locally
@@ -18,7 +18,7 @@ By default every source is fetched live. Each source has an on/off flag; turning
 
 | Flag | Source |
 |------|--------|
-| `--no-fetch-pickem` | Pickem (CBS, via Selenium) |
+| `--no-fetch-pickem` | Pickem (CBS; tries the saved login session first, Selenium login only if it has expired) |
 | `--no-fetch-draftkings` | Draft Kings |
 | `--no-fetch-espnbet` | ESPN Bet |
 | `--no-fetch-oddshark` | Odds Shark |
@@ -55,7 +55,7 @@ pipenv run python -m unittest discover tests
 
 Example event: `{"fetch_espnbet": false}`
 
-Note: the handler is wired up, but the run is not yet Lambda-ready (it needs a browser for the Pickem login and writes to the local `out/` and `resources/` folders). See `LAMBDA_DISCOVERY.md`.
+Note: the handler is wired up, but the run is not yet Lambda-ready. See `docs/LAMBDA_DISCOVERY.md`.
 
 ## Layout
 

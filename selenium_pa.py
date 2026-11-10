@@ -23,6 +23,7 @@ def _start_driver():
 
 
 def get_pickem_html(u, p):
+    """Log in and return (page_source, cookies), or None if the login or page load fails."""
     print('Starting Selenium Driver to fetch Pickem spreads...')
     driver = None
     try:
@@ -48,8 +49,9 @@ def get_pickem_html(u, p):
 
         WebDriverWait(driver, 30).until(EC.visibility_of_element_located((By.XPATH, "//div[@data-cy='spread']")))
         pickem_html = driver.page_source
+        cookies = driver.get_cookies()
         print('Selenium Driver succeeded')
-        return pickem_html
+        return pickem_html, cookies
     except Exception as err:
         print(f'Selenium Driver failed: {err}')
         print(traceback.format_exc())

@@ -55,9 +55,9 @@ def call_post_api(url, session=requests.Session(), headers=headers, params=None,
         print(f'Something went wrong: {err}')
         return err
     
-def call_get_api_with_session(url, headers=headers, params=None, session=requests.Session()):
+def call_get_api_with_session(url, headers=headers, params=None, session=requests.Session(), timeout=None):
     try:
-        response = session.get(url, params=params, headers=headers)
+        response = session.get(url, params=params, headers=headers, timeout=timeout)
         response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
         return response, session
     except requests.exceptions.HTTPError as http_err:
