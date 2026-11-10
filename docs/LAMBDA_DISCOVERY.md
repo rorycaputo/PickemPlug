@@ -41,7 +41,7 @@ The pipeline itself suits Lambda: fetch four sources, build a table, render a CS
 | 3 | **`FETCH_PICKEM = False` path.** Reads `resources/pickem.html`, which is gitignored and not in the zip. All fetches must be live on Lambda. | `pickem.py` | Blocker | `refactor-run-entrypoints` (partial) |
 | 4 | **Windows-built zip.** `package.zip` contains `lxml/etree.cp310-win_amd64.pyd`, which won't import on Lambda's Linux. | `package.zip` | Blocker | n/a |
 | 5 | **Where output goes.** The HTML and CSV are the product, and nothing says where they end up. | n/a | Design decision | n/a |
-| 6 | **Credentials in source.** Email and a base64 password are committed to git. Base64 is not encryption. | `pickem.py` | Fix before deploying | n/a |
+| 6 | **Credentials in source.** Email and a base64 password are committed to git. Base64 is not encryption. | `pickem.py` | Fix before deploying | `externalize-pickem-credentials` |
 | 7 | **Timezones.** Lambda `datetime.now()` is UTC. `date_util` assumes Eastern (8:30 PM MNF cutover) with naive datetimes. Week number flips about 4 hours early; DK 7-day window and CSV filenames shift too. | `date_util.py`, `__main__.py`, `draft_kings.py` | Moderate | n/a |
 | 8 | **Failure handling.** If DK or ESPN returns `None`, `body.json()` or `espn_marketplace_json['data']` raises, so one flaky source kills the run. Async Lambda invocations retry twice by default, so a crash means three scrapes. | `draft_kings.py`, `espn_bet.py`, `pickem.py` | Moderate | n/a |
 | 9 | **Datacenter IPs.** DK, ESPN and CBS may block AWS IP ranges even though they work from a home IP. | n/a | Unknown, test early | n/a |

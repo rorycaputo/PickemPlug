@@ -2,7 +2,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import base64
 import time
 import traceback
 
@@ -38,11 +37,7 @@ def get_pickem_html(u, p):
         username_input.send_keys(u)
 
         pass_input = driver.find_element(By.XPATH, "//input[@name='password']")
-        try:
-            pass_input.send_keys(base64.b64decode(p).decode('utf-8'))
-        except Exception as err:
-            print('Base64 decoding of password failed. Did you enter it?')
-            raise err
+        pass_input.send_keys(p)
 
         continue_button = driver.find_element(By.XPATH, "//button[@type='submit']")
         continue_button.click()

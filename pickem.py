@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -19,8 +20,17 @@ LOGGED_OUT_PATHS = ('/login', '/join')
 REQUEST_TIMEOUT_SECONDS = 30
 # pickem_html_url = 'https://picks.cbssports.com/football/pickem/pools/kbxw63b2geztqnjuha2ds===?entryId=ivxhi4tzhizdcnbrgm2tinbs'
 
-u = 'caputo.rory@gmail.com'
-p = 'Base 64 Encoded'
+CREDENTIAL_VARS = ('PICKEM_EMAIL', 'PICKEM_PASSWORD')
+
+
+def get_credentials():
+    """Return (email, password) from the environment; raise naming every missing or empty variable."""
+    values = {name: os.environ.get(name, '').strip() for name in CREDENTIAL_VARS}
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise RuntimeError('Pickem browser login needs credentials; set the environment variable(s): '
+                           + ', '.join(missing))
+    return values['PICKEM_EMAIL'], values['PICKEM_PASSWORD']
 
 def build_auth_document(cookies):
     """Reduce browser cookies to the login cookies and wrap them with version and expiry metadata."""
@@ -99,7 +109,8 @@ def fetch_pickem_html_with_browser():
     except ImportError as err:
         raise RuntimeError('Pickem session is missing or expired and the browser fallback is unavailable '
                            '(selenium is not installed)') from err
-    result = selenium_pa.get_pickem_html(u, p)
+    email, password = get_credentials()
+    result = selenium_pa.get_pickem_html(email, password)
     if result is None:
         return None
     pickem_html, cookies = result

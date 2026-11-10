@@ -1,6 +1,5 @@
 import requests
 import json
-import base64
 
 headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0',
@@ -99,7 +98,7 @@ def pickem_login_post(session, u, p):
         '1_$ACTION_3:1': '[{"isAuth":false,"error":null,"hasMissingFields":false,"missingFields":[],"custId":null,"masterProductId":null,"incorrectCredentials":false,"user":null,"appId":"cbssports","refCode":null}]',
         '1_ACTION_KEY': 'k5351b50c4e8ed7c6110393fe2f7e724c',
         '1_email': u,
-        '1_password': base64.b64decode(p).decode('utf-8'),
+        '1_password': p,
         '1_g-recaptcha-response': '',
         '1_occupation': '',
         '1_refPage': 'https://picks.cbssports.com/',
