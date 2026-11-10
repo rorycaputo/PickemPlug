@@ -9,6 +9,7 @@ import date_util
 
 OUTPUT_FILE = 'resources/odds_shark.html'
 
+# Todo make this lambda input
 EXCLUDED_BOOKS = [
         # 'BetMGM',
         # 'bet365',
