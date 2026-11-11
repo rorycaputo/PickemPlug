@@ -1,0 +1,14 @@
+{
+  "function_name": "pickem",
+  "region": "us-east-2",
+  "runtime": "python3.14",
+  "architecture": "x86_64",
+  "handler": "lambda_function.lambda_handler",
+  "timeout": 300,
+  "memory_size": 512,
+  "environment": {
+    "PICKEM_STORAGE": "s3",
+    "PICKEM_BUCKET": "pickemplug-332206611819",
+    "DISPLAY_TZ": "America/Chicago"
+  }
+}

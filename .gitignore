@@ -3,3 +3,5 @@ resources/
 *.pyc
 out/
 .env
+build/
+package.zip

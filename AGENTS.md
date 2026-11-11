@@ -26,3 +26,19 @@ This app runs in two places, and they have different capabilities:
   read from the SSM SecureString `/pickemplug/pickem-auth`. The app only ever
   reads it and must never write it; it is refreshed by hand from the local
   `resources/pickem_auth.json` after a local browser login.
+
+## Lambda deployment
+
+- `deploy/lambda.json` is the source of truth for the function's handler,
+  runtime, architecture, timeout, memory and environment variables; every
+  deploy applies it, removing any environment variable it doesn't list.
+- It must never hold the CBS credentials or the session (the scripts refuse
+  such keys).
+- The execution role is left untouched.
+- Each deploy publishes a numbered version described by its git sha,
+  smoke-invokes it with every `fetch_*` off, and only then points the `live`
+  alias at it. Schedulers should target `pickem:live`.
+- Each run's zip, manifest and log stay in `build/<timestamp>-<sha>/`, and
+  `build/deploys.log` gets one line per run.
+- The build needs `pipenv` and Python 3.14, and downloads Linux wheels, so it
+  works from Windows.

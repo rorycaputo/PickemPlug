@@ -67,7 +67,7 @@ pipenv run python -m unittest discover tests
 
 Example event: `{"fetch_espnbet": false}`
 
-Note: the handler is wired up, but the run is not yet Lambda-ready. See `docs/LAMBDA_DISCOVERY.md`.
+Note: a cache-only run (every `fetch_*` off) works on Lambda; live fetches from Lambda are untested (datacenter IPs, partial-failure handling). See `docs/LAMBDA_DISCOVERY.md`.
 
 ### Storage
 
@@ -88,6 +88,42 @@ bash scripts/upload-pickem-auth.sh           # upload resources/pickem_auth.json
 ```
 
 The script needs the AWS CLI and a bash (Git Bash on Windows), and reads `AWS_DEFAULT_REGION` / `AWS_PROFILE` from the environment or `.env`. If `resources/pickem_auth.json` is missing, or its session has expired, it prompts you to run `python __main__.py --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark` to regenerate it (for an expired session you can also upload it anyway or abort). Repeat the upload whenever the session expires.
+
+### Deploy
+
+```bash
+bash scripts/deploy-lambda.sh    # preflight, tests, build, session upload, deploy, smoke invoke, live alias
+bash scripts/build-lambda.sh     # build only: writes build/<timestamp>-<sha>/package.zip, no AWS calls
+```
+
+`deploy/lambda.json` is the source of truth for the function's handler.
+
+| Flag | Effect |
+|------|--------|
+| `--allow-dirty` | Deploy with uncommitted changes (recorded as `<sha>-dirty`) |
+| `--skip-auth-upload` | Don't run `upload-pickem-auth.sh` |
+| `--no-invoke` | Skip the smoke invoke; `live` is then not moved |
+
+Each deploy publishes a numbered version described by its git sha, smoke-invokes it with every `fetch_*` off, and only then points the `live` alias at it. Schedulers should target `pickem:live`.
+
+Roll back by pointing `live` at an earlier version:
+
+```bash
+aws lambda update-alias --function-name pickem --name live --function-version <N> --region us-east-2
+```
+
+Set up:
+
+The deploying IAM user needs `lambda:GetFunction`, `UpdateFunctionCode`, `UpdateFunctionConfiguration`, `PublishVersion`, `InvokeFunction`, `GetAlias`, `CreateAlias` and `UpdateAlias`, plus the SSM access the upload script needs.
+
+The smoke invoke reads the bucket's `cache/` objects, so before the first deploy, seed them once from a fresh local run (never copy `pickem_auth.json`):
+
+```bash
+for f in pickem.html DK_markets_resp.json espn_markets_resp.json odds_shark.html; do
+  aws s3 cp "resources/$f" "s3://<bucket>/cache/$f"
+done
+```
+
 
 ## Layout
 
