@@ -80,7 +80,14 @@ Where files go is set by environment variables. Local runs need neither.
 
 Bucket layout: `cache/` holds each source's last fetched response (the S3 equivalent of local `resources/`), `out/readout.html` the latest readout, and `out/csv/` every run's CSV.
 
-In S3 mode the saved Pickem session is read from the SSM SecureString parameter `/pickemplug/pickem-auth`, never from the bucket. The app only reads it. When the session expires, run locally so the browser login refreshes `resources/pickem_auth.json`, then copy that file's contents into the parameter by hand.
+In S3 mode the saved Pickem session is read from the SSM SecureString parameter `/pickemplug/pickem-auth`, never from the bucket. The app only reads it. Upload it with the local script, which creates the parameter on the first run and overwrites it afterwards:
+
+```bash
+bash scripts/upload-pickem-auth.sh --check   # one-time: verifies the AWS CLI, credentials and SSM access; writes nothing
+bash scripts/upload-pickem-auth.sh           # upload resources/pickem_auth.json
+```
+
+The script needs the AWS CLI and a bash (Git Bash on Windows), and reads `AWS_DEFAULT_REGION` / `AWS_PROFILE` from the environment or `.env`. If `resources/pickem_auth.json` is missing, or its session has expired, it prompts you to run `python __main__.py --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark` to regenerate it (for an expired session you can also upload it anyway or abort). Repeat the upload whenever the session expires.
 
 ## Layout
 
