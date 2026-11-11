@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert a comma-delimited CSV file (rows separated by newlines) into a
-self-contained HTML table.
+Render comma-delimited CSV rows as a self-contained HTML table.
 
 Handles ANSI SGR color codes embedded in cell values (e.g. from terminal
 output that was captured verbatim into the CSV), such as:
@@ -11,11 +10,9 @@ output that was captured verbatim into the CSV), such as:
 ...and renders them as colored <span> elements instead of raw escape
 sequences.
 
-Uses only the standard library (csv, re, argparse) plus lxml.
+Uses only the standard library (re) plus lxml.
 """
 
-import csv
-import os
 import re
 
 from lxml import etree
@@ -395,26 +392,22 @@ def superscript_daggers(html_str):
     return html_str.replace(DAGGER, f'<sup>{DAGGER}</sup>')
 
 
-def create_html(
-    csv_filename,
+def render_html(
+    rows,
     generated_at,
-    output_filename=None,
     title=None,
     sub_headers=None,
     preface_lines=None,
     header_text=None,
 ):
     """
-    Read a CSV file (rows separated by newlines, ',' as the only delimiter)
-    and write it out as a styled, ANSI-color-aware HTML table.
+    Render CSV rows (header row first) as a styled, ANSI-color-aware HTML page.
 
     Args:
-        csv_filename: Path to the input CSV file.
+        rows: list of rows, each a list of cell strings; the first row is the header.
         generated_at: aware datetime for the "generated" time in the subtitle
             (the CSV's creation time); shown in the display zone.
-        output_filename: Path to write the HTML file to. If omitted,
-            defaults to `csv_filename` with its extension replaced by `.html`.
-        title: Optional page title. Defaults to `csv_filename`.
+        title: Optional page title. Defaults to 'CSV Export'.
         sub_headers: optional list of exactly 3 words (e.g. ['word0',
             'word1', 'word2']). When provided, header columns named
             "<GROUP> word0", "<GROUP> word1", "<GROUP> word2" (all 3,
@@ -427,29 +420,15 @@ def create_html(
             very top of the page, above the title/timestamp subtitle.
 
     Returns:
-        The path the HTML file was written to.
+        The HTML document as a string.
     """
-    with open(csv_filename, newline='', encoding='utf-8') as f:
-        reader = csv.reader(f, delimiter=',')
-        rows = [row for row in reader]
-
     doc = build_html(
         rows,
-        title=title or csv_filename,
+        title=title or 'CSV Export',
         sub_headers=sub_headers,
         preface_lines=preface_lines,
         header_text=header_text,
         generated_at=generated_at,
     )
-
-    if output_filename is None:
-        base, _ext = os.path.splitext(csv_filename)
-        output_filename = base + '.html'
-
     html_str = tostring(doc, doctype='<!DOCTYPE html>', pretty_print=True, encoding='unicode')
-    html_str = superscript_daggers(html_str)
-
-    with open(output_filename, 'wb') as f:
-        f.write(html_str.encode('utf-8'))
-
-    return output_filename
+    return superscript_daggers(html_str)

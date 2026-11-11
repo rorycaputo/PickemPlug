@@ -37,7 +37,7 @@ The pipeline itself suits Lambda: fetch four sources, build a table, render a CS
 | # | Issue | Where | Severity | Solution |
 |---|-------|-------|----------| ---------- |
 | 1 | **Selenium + Firefox.** `webdriver.Firefox()` with no headless flag. Lambda has no Firefox, no geckodriver, no display. | `selenium_pa.py` | Blocker | `pickem-session-cookie-fetch` (partial) |
-| 2 | **Read-only filesystem.** Everything writes to `./out` and `./resources`. Only `/tmp` is writable. | `util.write_string_to_file`, `csv_util`, `html_util` | Blocker | n/a |
+| 2 | **Read-only filesystem.** Everything writes to `./out` and `./resources`. Only `/tmp` is writable. | `util.write_string_to_file`, `csv_util`, `html_util` | Blocker | ✅ `pluggable-storage` |
 | 3 | **`FETCH_PICKEM = False` path.** Reads `resources/pickem.html`, which is gitignored and not in the zip. All fetches must be live on Lambda. | `pickem.py` | Blocker | `refactor-run-entrypoints` (partial) |
 | 4 | **Windows-built zip.** `package.zip` contains `lxml/etree.cp310-win_amd64.pyd`, which won't import on Lambda's Linux. | `package.zip` | Blocker | n/a |
 | 5 | **Where output goes.** The HTML and CSV are the product, and nothing says where they end up. | n/a | Design decision | n/a |
@@ -78,7 +78,7 @@ This decides whether the Lambda is a zip or a container image.
 
 1. ✅ Refactor: thin `lambda_function.py`, move the body into a core module, pass config in instead of reading constants. *(Done: archived as `refactor-run-entrypoints`; core is `pickem_plug.py`.)*
    - ⬜ Move credentials to env vars or SSM. *(Still open; credentials are still hardcoded in `pickem.py`.)*
-2. Make IO pluggable: the core returns the CSV and HTML as strings or bytes, and a thin layer writes them to disk locally or to S3/SES on Lambda. Use `/tmp` for any caches.
+2. ✅ Make IO pluggable: the core returns the CSV and HTML as strings or bytes, and a thin layer writes them to disk locally or to S3/SES on Lambda. Use `/tmp` for any caches. *(Done: `pluggable-storage`. `storage.py` writes locally or to S3 per `PICKEM_STORAGE`, all in memory, so no `/tmp`; the session comes from SSM in S3 mode.)*
 3. ✅ Fix timezones: use `ZoneInfo('America/New_York')` throughout. *(Done: `standardize-timezones`. Sources parse to aware datetimes, NFL week logic runs in Eastern, and `DISPLAY_TZ` (default Central) is display-only.)*
 4. Make failures partial: a missing source becomes an empty list plus a warning, and doesn't take down the whole run.
 5. Spike the datacenter-IP question early: run the three HTTP fetchers from a throwaway Lambda before building anything else around them.

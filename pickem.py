@@ -6,10 +6,9 @@ from urllib.parse import urlparse
 import requests
 from lxml import etree, html
 import apis
-import util
+import storage
 
-OUTPUT_FILE = 'resources/pickem.html'
-AUTH_FILE = 'resources/pickem_auth.json'
+SAVED_PAGE_KEY = 'cache/pickem.html'
 AUTH_VERSION = 1
 # Cookies that carry the CBS login; the rest of the browser's cookies are consent/analytics.
 # Live testing showed the pool page needs `pid`; auth_session/auth_state alone get redirected to /join.
@@ -45,25 +44,28 @@ def build_auth_document(cookies):
     }
 
 
-def save_auth_file(cookies, path=AUTH_FILE):
-    """Write the login cookies to the auth file. Returns False (leaving any existing file alone) if none qualify."""
+def save_auth_file(cookies):
+    """Save the login cookies as the session. Returns False (leaving any existing session alone) if none qualify
+    or the active storage doesn't accept session writes (S3 mode)."""
     document = build_auth_document(cookies)
     if not document['cookies']:
         print('Browser login produced no auth cookies; not updating the saved Pickem session')
         return False
-    util.write_string_to_file(json.dumps(document, indent=2), path)
-    print(f'Saved Pickem session to {path} (expires {document["expires_at"]})')
+    if not storage.write_session(json.dumps(document, indent=2)):
+        print('New Pickem session not saved: the session is read-only in S3 storage mode')
+        return False
+    print(f'Saved Pickem session (expires {document["expires_at"]})')
     return True
 
 
-def load_auth_cookies(path=AUTH_FILE):
-    """Return the saved login cookies, or None if the file is missing, unreadable or an unknown version."""
+def load_auth_cookies():
+    """Return the saved login cookies, or None if the session is missing, unreadable or an unknown version."""
     try:
-        with open(path, encoding='utf-8') as file:
-            document = json.load(file)
-    except FileNotFoundError:
-        print('No saved Pickem session found')
-        return None
+        text = storage.read_session()
+        if text is None:
+            print('No saved Pickem session found')
+            return None
+        document = json.loads(text)
     except (OSError, ValueError):
         print('Saved Pickem session file is unreadable')
         return None
@@ -136,11 +138,10 @@ def get_pickem_lines(fetch=True):
             raise RuntimeError('No Pickem page could be obtained: the saved session was not usable and the browser login failed')
         pickem_html = html.fromstring(pickem_html)
         etree.strip_elements(pickem_html, 'script', 'style', with_tail=False)
-        print(f'Writing PickEm html to {OUTPUT_FILE} for later use')
-        util.write_string_to_file(html.tostring(pickem_html, encoding='unicode'), OUTPUT_FILE)
+        print(f'Writing PickEm html to {SAVED_PAGE_KEY} for later use')
+        storage.write_text(SAVED_PAGE_KEY, html.tostring(pickem_html, encoding='unicode'))
     else:
-        with open(OUTPUT_FILE) as file:
-            pickem_html = html.fromstring(file.read())
+        pickem_html = html.fromstring(storage.read_text(SAVED_PAGE_KEY))
 
     results = []
     for h3 in pickem_html.xpath('//h3'):

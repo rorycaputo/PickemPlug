@@ -13,10 +13,10 @@ import json
 import re
 import apis
 import date_util
+import storage
 import time_util
-import util
 
-OUTPUT_FILE = 'resources/espn_markets_resp.json'
+SAVED_DATA_KEY = 'cache/espn_markets_resp.json'
 
 espn_base_url = "https://sportsbook.thescore.bet"
 espn_lines_url = f'{espn_base_url}/sport/football/organization/united-states/competition/nfl/section/lines'
@@ -46,8 +46,8 @@ def make_api_calls():
     bearer_token = get_bearer_token(bearer_token_resp)
     espn_marketplace_resp, session = apis.espn_marketplace_get(marketplace_sha, bearer_token, session)
     if espn_marketplace_resp is not None:
-        print(f'Writing ESPN Bet json to {OUTPUT_FILE} for later use')
-        util.write_string_to_file(espn_marketplace_resp, OUTPUT_FILE)
+        print(f'Writing ESPN Bet json to {SAVED_DATA_KEY} for later use')
+        storage.write_text(SAVED_DATA_KEY, espn_marketplace_resp.text)
         return espn_marketplace_resp.json()
     return None
 
@@ -57,8 +57,7 @@ def get_espn_bet_lines(fetch=True, now=None):
     if fetch:
         espn_marketplace_json = make_api_calls()
     else:
-        with open(OUTPUT_FILE) as file:
-            espn_marketplace_json = json.load(file)
+        espn_marketplace_json = json.loads(storage.read_text(SAVED_DATA_KEY))
     for sectionChild in espn_marketplace_json['data']['competitionSection']['sectionChildren']:
         if sectionChild['__typename'] == 'MarketplaceShelf':
             marketplaceShelfChildren = sectionChild['marketplaceShelfChildren']

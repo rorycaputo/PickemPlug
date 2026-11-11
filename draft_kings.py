@@ -2,10 +2,10 @@ from lxml import html
 import json
 import apis
 import date_util
+import storage
 import time_util
-import util
 
-OUTPUT_FILE = 'resources/DK_markets_resp.json'
+SAVED_DATA_KEY = 'cache/DK_markets_resp.json'
 
 # lines_url = f'https://sportsbook.draftkings.com/leagues/football/nfl'
 lines_url = 'https://sportsbook-nash.draftkings.com/sites/US-IL-SB/api/sportscontent/controldata/league/leagueSubcategory/v1/markets?isBatchable=false&templateVars=88808%2C4518&eventsQuery=%24filter%3DleagueId%20eq%20%2788808%27%20AND%20clientMetadata%2FSubcategories%2Fany%28s%3A%20s%2FId%20eq%20%274518%27%29&marketsQuery=%24filter%3DclientMetadata%2FsubCategoryId%20eq%20%274518%27%20AND%20tags%2Fall%28t%3A%20t%20ne%20%27SportcastBetBuilder%27%29&include=Events&entity=events'
@@ -46,13 +46,11 @@ def get_lines_json(fetch=True):
         # }
         body = apis.call_get_api(lines_url, headers, None)
         if body is not None:
-            print(f'Writing Draft Kings json to {OUTPUT_FILE} for later use')
-            util.write_string_to_file(body, OUTPUT_FILE)
+            print(f'Writing Draft Kings json to {SAVED_DATA_KEY} for later use')
+            storage.write_text(SAVED_DATA_KEY, body.text)
         return body.json()
     else:
-        with open(OUTPUT_FILE) as file:
-            data = json.load(file)
-        return data
+        return json.loads(storage.read_text(SAVED_DATA_KEY))
 
 # Output format: {'team': 'MIA Dolphin', 'spread': '12.5', 'odds': '-110', 'diff': ''}
 def get_draft_kings_lines(fetch=True, now=None):

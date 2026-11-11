@@ -1,4 +1,5 @@
 import csv
+import io
 import os
 import re
 from datetime import datetime, timezone
@@ -21,16 +22,20 @@ def get_generated_at(path):
     return datetime.strptime(match.group(1), CSV_STAMP_FORMAT).replace(tzinfo=timezone.utc)
 
 
-def create_csv(tabulate_dict, out_name):
+def build_csv(tabulate_dict):
     headers = []
     for event in tabulate_dict:
         for key in event:
             if key not in headers:
                 headers.append(key)
 
-    with open(out_name, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=headers)
-        writer.writeheader()
-        writer.writerows(tabulate_dict)
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=headers)
+    writer.writeheader()
+    writer.writerows(tabulate_dict)
+    return buffer.getvalue()
 
-    return out_name
+
+def parse_csv(text):
+    """CSV text as a list of rows (header row first)."""
+    return list(csv.reader(io.StringIO(text, newline='')))

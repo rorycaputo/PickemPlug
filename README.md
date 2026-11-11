@@ -1,6 +1,6 @@
 # Pickem Plug
 
-Compares your CBS Pickem spreads against sportsbook lines and writes a CSV and an HTML readout to `out/`.
+Compares your CBS Pickem spreads against sportsbook lines and writes a CSV (to `out/csv/`) and an HTML readout (`out/readout.html`).
 
 ## Setup
 
@@ -42,7 +42,7 @@ pipenv run python __main__.py --no-fetch-pickem
 pipenv run python __main__.py --no-fetch-pickem --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark
 
 # Rebuild the HTML from an existing CSV without writing a new one
-pipenv run python __main__.py --override-csv out/spreads_output_11_11_26_02_16_UTC.csv
+pipenv run python __main__.py --override-csv out/csv/spreads_output_11_11_26_02_16_UTC.csv
 ```
 
 `pipenv run python __main__.py --help` lists all options and their defaults.
@@ -57,15 +57,30 @@ Times shown to you (the HTML "generated" time) use the `DISPLAY_TZ` environment 
 pipenv run python -m unittest discover tests
 ```
 
-## AWS Lambda
+## AWS
+
+### Lambda
 
 - Handler: `lambda_function.lambda_handler`
 - Optional event keys, all booleans defaulting to `true`: `fetch_pickem`, `fetch_draftkings`, `fetch_espnbet`, `fetch_oddshark`. Other keys (such as those a scheduler adds) are ignored. A non-boolean value makes the invocation fail before anything is fetched.
-- Returns `{"week": ..., "csv_path": ..., "html_path": ...}`.
+- Returns `{"week": ..., "csv_path": ..., "html_path": ...}`, where the paths are storage keys such as `out/readout.html`.
 
 Example event: `{"fetch_espnbet": false}`
 
 Note: the handler is wired up, but the run is not yet Lambda-ready. See `docs/LAMBDA_DISCOVERY.md`.
+
+### Storage
+
+Where files go is set by environment variables. Local runs need neither.
+
+| Variable | Meaning |
+|----------|---------|
+| `PICKEM_STORAGE` | `local` (default): files under `resources/` and `out/`. `s3`: objects in a bucket. |
+| `PICKEM_BUCKET` | Bucket name, required when `PICKEM_STORAGE=s3`. |
+
+Bucket layout: `cache/` holds each source's last fetched response (the S3 equivalent of local `resources/`), `out/readout.html` the latest readout, and `out/csv/` every run's CSV.
+
+In S3 mode the saved Pickem session is read from the SSM SecureString parameter `/pickemplug/pickem-auth`, never from the bucket. The app only reads it. When the session expires, run locally so the browser login refreshes `resources/pickem_auth.json`, then copy that file's contents into the parameter by hand.
 
 ## Layout
 

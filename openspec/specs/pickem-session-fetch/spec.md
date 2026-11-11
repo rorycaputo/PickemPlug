@@ -29,7 +29,7 @@ The system SHALL run the browser login only when the HTTP attempt does not produ
 - **THEN** the system runs the browser login instead of stopping
 
 ### Requirement: Successful browser login refreshes the auth file
-After a successful browser login, the system SHALL write the session cookies needed for later HTTP requests to the auth file, replacing its previous contents.
+After a successful browser login in local storage mode, the system SHALL write the session cookies needed for later HTTP requests to the auth file, replacing its previous contents.
 
 #### Scenario: Auth file created
 - **WHEN** the browser login succeeds and no auth file existed
@@ -44,7 +44,7 @@ After a successful browser login, the system SHALL write the session cookies nee
 - **THEN** the existing auth file is left unchanged
 
 ### Requirement: Auth file contents
-The auth file SHALL be a JSON document in `resources/` containing a format version, the time it was saved, the time the earliest-expiring cookie expires, and a list of cookies each with at least a name, value, domain, path and expiry when one exists. The system SHALL store only the cookies needed to authenticate the HTTP request. The auth file SHALL NOT be committed to version control.
+The saved session (the local auth file, or the SSM parameter in S3 mode) SHALL be a JSON document containing a format version, the time it was saved, the time the earliest-expiring cookie expires, and a list of cookies each with at least a name, value, domain, path and expiry when one exists. The system SHALL store only the cookies needed to authenticate the HTTP request. The local auth file SHALL live in `resources/` and SHALL NOT be committed to version control.
 
 #### Scenario: Auth file shape
 - **WHEN** the browser login writes the auth file
@@ -57,6 +57,10 @@ The auth file SHALL be a JSON document in `resources/` containing a format versi
 #### Scenario: Unreadable auth file
 - **WHEN** the auth file exists but is not valid JSON or has an unknown version
 - **THEN** it is treated as missing and the browser login runs
+
+#### Scenario: Unreadable SSM value
+- **WHEN** the SSM parameter in S3 mode is not valid JSON or has an unknown version
+- **THEN** it is treated as missing, the same as an unreadable auth file
 
 ### Requirement: Saved page is shared by both strategies
 Whichever strategy succeeds, the system SHALL save the fetched Pickem page to the same saved-page file, and a run with the Pickem fetch option set to false SHALL read spreads from that file without using the auth file.
@@ -105,3 +109,21 @@ The browser login SHALL take the CBS email and password from the `PICKEM_EMAIL` 
 #### Scenario: Local env file excluded from git
 - **WHEN** a `.env` file holding the variables exists in the working tree
 - **THEN** version control ignores it
+
+### Requirement: Saved session source follows the storage mode
+In local storage mode the saved session SHALL be the auth file `resources/pickem_auth.json`. In S3 storage mode it SHALL be the SecureString SSM parameter `/pickemplug/pickem-auth`, read with decryption and holding the same JSON document as the auth file. A missing parameter SHALL be treated like a missing auth file.
+
+#### Scenario: S3 mode with a valid session in SSM
+- **WHEN** a live Pickem fetch runs in S3 mode and the parameter holds a session CBS still accepts
+- **THEN** the spreads are read from the page returned by the HTTP request and no local auth file is read
+
+#### Scenario: S3 mode with no parameter
+- **WHEN** a live Pickem fetch runs in S3 mode and the parameter does not exist
+- **THEN** the system treats the session as missing and moves on to the browser login fallback
+
+### Requirement: The system never writes the session to SSM
+The system SHALL only read the SSM parameter. Populating or refreshing it is done outside the system.
+
+#### Scenario: Browser login succeeds in S3 mode
+- **WHEN** the browser login succeeds during a run in S3 mode
+- **THEN** its page is used for the spreads, the SSM parameter is not written, and the run prints that the new session was not saved

@@ -2,13 +2,13 @@ from lxml import html
 # import html as phtml
 from datetime import datetime, timedelta
 import apis
-import util
 import statistics
 import math
 import date_util
+import storage
 import time_util
 
-OUTPUT_FILE = 'resources/odds_shark.html'
+SAVED_DATA_KEY = 'cache/odds_shark.html'
 
 # Todo make this lambda input
 EXCLUDED_BOOKS = [
@@ -55,13 +55,12 @@ def get_spread_html(fetch=True):
         body = apis.call_get_api(spread_url, headers)
         if body is not None:
             odds_shark_html = body.text
-            print(f'Writing Odds Shark html to {OUTPUT_FILE} for later use')
-            util.write_string_to_file(odds_shark_html, OUTPUT_FILE)
+            print(f'Writing Odds Shark html to {SAVED_DATA_KEY} for later use')
+            storage.write_text(SAVED_DATA_KEY, odds_shark_html)
             return html.fromstring(odds_shark_html)
         return None
     else:
-        with open(OUTPUT_FILE) as file:
-            return html.fromstring(file.read())
+        return html.fromstring(storage.read_text(SAVED_DATA_KEY))
 
 # Output format: {'team': 'MIA', 'spreads': [{'book': 'Caesars', 'spread': '12.5', 'odds': '-110', 'diff': ''}]}
 def get_odds_shark_spreads(fetch=True, now=None):

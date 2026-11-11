@@ -12,6 +12,7 @@ import date_util
 import time_util
 import csv_util
 import html_util
+import storage
 
 # todo get CBS odds at time of go-live
 
@@ -49,7 +50,7 @@ class RunConfig:
 @dataclass(frozen=True)
 class RunResult:
     week: int
-    csv_path: str
+    csv_path: str  # storage keys, e.g. out/readout.html
     html_path: str
 
 
@@ -71,11 +72,12 @@ HTML_HEADER_TEXT = 'Week '
 VALUE_DIFF_DISCLAIMER = '* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.'
 COVERS_DISCLAIMER = '\u2020 From Covers.com'
 
-CSV_OUTPUT_FILENAME = './out/spreads_output'
-HTML_READOUT_FILENAME = './out/readout.html'
+CSV_OUTPUT_KEY_BASE = 'out/csv/spreads_output'
+HTML_READOUT_KEY = 'out/readout.html'
 
 def run(config=None):
     config = config or RunConfig()
+    storage.validate()
     time_util.get_display_tz()
     if config.override_csv_data is not None:
         csv_util.get_generated_at(config.override_csv_data)
@@ -97,18 +99,21 @@ def run(config=None):
     # todo make only 'spread' and 'odds' neccessary for the sub-headers so CBS is in there (if we can figure out CBS initial odds)
     if config.override_csv_data is not None:
         output_csv = config.override_csv_data
+        csv_text = storage.read_text(output_csv)
     else:
-        output_csv = csv_util.create_csv(final_tabulate_dict, csv_util.stamped_filename(CSV_OUTPUT_FILENAME, now))
-    html_util.create_html(
-        csv_filename=output_csv,
+        output_csv = csv_util.stamped_filename(CSV_OUTPUT_KEY_BASE, now)
+        csv_text = csv_util.build_csv(final_tabulate_dict)
+        storage.write_text(output_csv, csv_text)
+    html_text = html_util.render_html(
+        csv_util.parse_csv(csv_text),
         generated_at=csv_util.get_generated_at(output_csv),
-        output_filename=HTML_READOUT_FILENAME,
         title=f'{HTML_HEADER_TEXT}{nfl_week} - Pickem',
         header_text=f'{HTML_HEADER_TEXT}{nfl_week}',
         sub_headers=[SPREAD_HEADER, ODDS_HEADER, DIFF_HEADER],
         preface_lines=[VALUE_DIFF_DISCLAIMER, COVERS_DISCLAIMER],
     )
-    return RunResult(week=nfl_week, csv_path=output_csv, html_path=HTML_READOUT_FILENAME)
+    storage.write_text(HTML_READOUT_KEY, html_text)
+    return RunResult(week=nfl_week, csv_path=output_csv, html_path=HTML_READOUT_KEY)
 
 def build_table(pickem_lines, dk_lines, espn_lines, os_lines):
     final_table = []

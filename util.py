@@ -1,16 +1,4 @@
-import os
-import requests
 import re
-
-def write_string_to_file(string, file_path):
-    directory = os.path.dirname(file_path)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    with open(file_path, 'w', encoding="utf-8") as file:
-        if isinstance(string, requests.Response):
-            file.write(string.text)
-        else:
-            file.write(string)
 
 def get_odds_float(odds):
     odds_float = float(re.sub(r'[^\d.-]', '', re.sub(r'Even', '100', odds, flags=re.IGNORECASE)))
