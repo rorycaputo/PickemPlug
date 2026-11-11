@@ -1,6 +1,19 @@
 from datetime import date, datetime, time, timedelta
 
+from time_util import LEAGUE_TZ, now as _now
+
 MNF_KICKOFF = time(20, 30)  # 8:30 PM Eastern
+
+
+def _require_aware(dt: datetime) -> datetime:
+    """Return dt in the league zone; naive datetimes are rejected rather than guessed at."""
+    if dt.tzinfo is None:
+        raise ValueError('datetime must be timezone-aware')
+    return dt.astimezone(LEAGUE_TZ)
+
+
+def _eastern(d: date, t: time) -> datetime:
+    return datetime.combine(d, t, tzinfo=LEAGUE_TZ)
 
 
 def _day_after_super_bowl(cal_year: int) -> date:
@@ -13,9 +26,10 @@ def _day_after_super_bowl(cal_year: int) -> date:
 
 
 def _season_year(dt: datetime) -> int:
+    """`dt` must already be in the league zone."""
     season_year = dt.year - 1 if dt.month <= 2 else dt.year
     if dt.month <= 2:
-        cutover = datetime.combine(_day_after_super_bowl(dt.year), time(0, 0))
+        cutover = _eastern(_day_after_super_bowl(dt.year), time(0, 0))
         if dt >= cutover:
             season_year = dt.year
     return season_year
@@ -30,18 +44,17 @@ def _week1_thursday(season_year: int) -> date:
 
 def _boundaries(season_year: int):
     week1_thu = _week1_thursday(season_year)
-    boundaries = [datetime.combine(_day_after_super_bowl(season_year), time(0, 0))]
+    boundaries = [_eastern(_day_after_super_bowl(season_year), time(0, 0))]
     for n in range(2, 23):
         monday_of_prev_week = week1_thu + timedelta(days=4 + 7 * (n - 2))
-        boundaries.append(datetime.combine(monday_of_prev_week, MNF_KICKOFF))
-    boundaries.append(
-        datetime.combine(_day_after_super_bowl(season_year + 1), time(0, 0))
-    )
+        boundaries.append(_eastern(monday_of_prev_week, MNF_KICKOFF))
+    boundaries.append(_eastern(_day_after_super_bowl(season_year + 1), time(0, 0)))
     return boundaries
 
 
 def get_nfl_week(dt: datetime) -> int:
-    """Estimate the current NFL week number (1-22) from a given datetime."""
+    """Estimate the current NFL week number (1-22) from an aware datetime."""
+    dt = _require_aware(dt)
     season_year = _season_year(dt)
     boundaries = _boundaries(season_year)
 
@@ -56,7 +69,7 @@ def get_nfl_week(dt: datetime) -> int:
 
 def get_nfl_week_end(week: int, reference_dt: datetime = None) -> datetime:
     """
-    Given a week number (1-22), return the datetime marking the END of
+    Given a week number (1-22), return the aware datetime marking the END of
     that week - the instant (plus one second) before the next
     week begins. `reference_dt` (defaults to now) disambiguates which
     season's week you mean, since week numbers reset every year.
@@ -65,9 +78,15 @@ def get_nfl_week_end(week: int, reference_dt: datetime = None) -> datetime:
         raise ValueError("week must be between 1 and 22")
 
     if reference_dt is None:
-        reference_dt = datetime.now()
+        reference_dt = _now()
 
-    season_year = _season_year(reference_dt)
+    season_year = _season_year(_require_aware(reference_dt))
     boundaries = _boundaries(season_year)
 
     return boundaries[week] + timedelta(seconds=1)
+
+
+def is_in_current_week(start: datetime, now: datetime) -> bool:
+    """True when an event starting at `start` is upcoming and falls within the current NFL week."""
+    _require_aware(start)
+    return now <= start <= get_nfl_week_end(get_nfl_week(now), now)

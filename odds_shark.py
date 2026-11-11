@@ -6,6 +6,7 @@ import util
 import statistics
 import math
 import date_util
+import time_util
 
 OUTPUT_FILE = 'resources/odds_shark.html'
 
@@ -63,10 +64,10 @@ def get_spread_html(fetch=True):
             return html.fromstring(file.read())
 
 # Output format: {'team': 'MIA', 'spreads': [{'book': 'Caesars', 'spread': '12.5', 'odds': '-110', 'diff': ''}]}
-def get_odds_shark_spreads(fetch=True):
+def get_odds_shark_spreads(fetch=True, now=None):
     odds_shark_html = get_spread_html(fetch)
-    current_date = datetime.now()
-    tuesday = current_date + timedelta(days=(1 - current_date.weekday()) % 7)
+    now = now or time_util.now()
+    now_et = now.astimezone(time_util.LEAGUE_TZ)  # the page's "Time (ET)" dates are Eastern
 
     os_spreads_data = []
     # Generates all_events = [{team: '', spreads: [{spread: '', odds: '', book: ''}]}]
@@ -82,14 +83,14 @@ def get_odds_shark_spreads(fetch=True):
             # format example: <span>Sep 17,&nbsp;</span><span>20:15</span>
             date_string = "{} {}".format(date_spans[0].replace('\xa0', ' ').strip().rstrip(','), date_spans[1].strip())
             if 'Today' in date_string:
-                date_string = date_string.replace('Today', current_date.strftime('%b %d'))
-            event_date = datetime.strptime(f"{date_string} {current_date.year}", "%b %d %H:%M %Y")
-            if current_date.month == 12 and event_date.month == 1 and event_date.day <= 7:
+                date_string = date_string.replace('Today', now_et.strftime('%b %d'))
+            event_date = datetime.strptime(f"{date_string} {now_et.year}", "%b %d %H:%M %Y").replace(tzinfo=time_util.LEAGUE_TZ)
+            if now_et.month == 12 and event_date.month == 1 and event_date.day <= 7:
                 event_date = event_date.replace(year=event_date.year + 1)
         else:
-            event_date = current_date - timedelta(days=1)
+            event_date = now - timedelta(days=1)
 
-        if current_date <= event_date and event_date <= date_util.get_nfl_week_end(date_util.get_nfl_week(current_date)):
+        if date_util.is_in_current_week(event_date, now):
             events_row = []
             for participant_name in event.xpath('.//strong/text()'):
                 events_row.append({'team': participant_name, 'spreads': [], 'average_spread': None, 'average_mode_odds': None})

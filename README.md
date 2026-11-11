@@ -42,10 +42,14 @@ pipenv run python __main__.py --no-fetch-pickem
 pipenv run python __main__.py --no-fetch-pickem --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark
 
 # Rebuild the HTML from an existing CSV without writing a new one
-pipenv run python __main__.py --override-csv out/spreads_output_10_06_26_17_06.csv
+pipenv run python __main__.py --override-csv out/spreads_output_11_11_26_02_16_UTC.csv
 ```
 
 `pipenv run python __main__.py --help` lists all options and their defaults.
+
+### Time zones
+
+Times shown to you (the HTML "generated" time) use the `DISPLAY_TZ` environment variable, an IANA zone name that defaults to `America/Chicago`. Set it in your shell, the `.env` file, or the Lambda environment to change it. It only affects display.
 
 ## Tests
 

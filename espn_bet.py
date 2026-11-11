@@ -12,6 +12,8 @@ from lxml import html
 import json
 import re
 import apis
+import date_util
+import time_util
 import util
 
 OUTPUT_FILE = 'resources/espn_markets_resp.json'
@@ -50,7 +52,8 @@ def make_api_calls():
     return None
 
 # Output format: {'team': 'MIA Dolphin', 'spread': 12.5, 'odds': '-110', 'diff': ''}
-def get_espn_bet_lines(fetch=True):
+def get_espn_bet_lines(fetch=True, now=None):
+    now = now or time_util.now()
     if fetch:
         espn_marketplace_json = make_api_calls()
     else:
@@ -61,8 +64,12 @@ def get_espn_bet_lines(fetch=True):
             marketplaceShelfChildren = sectionChild['marketplaceShelfChildren']
     espn_spread_data = []
     for marketplaceShelfChild in marketplaceShelfChildren:
+        # Markets carry no start time; the game's UTC start is on the card's event.
+        start_time = (marketplaceShelfChild.get('fallbackEvent') or {}).get('startTime')
+        if not start_time or not date_util.is_in_current_week(time_util.parse_utc_iso(start_time), now):
+            continue
         for market in marketplaceShelfChild['pagedMarkets']:
-            if market['name'] == 'Game Spread' and not market['status'] == 'CLOSED': # Todo find the actual time
+            if market['name'] == 'Game Spread' and not market['status'] == 'CLOSED':
                 for selection in market['selections']:
                     espn_spread_data.append({
                         'team': selection['participant']['mediumName'],

@@ -1,7 +1,8 @@
 from lxml import html
 import json
-from datetime import datetime, timedelta
 import apis
+import date_util
+import time_util
 import util
 
 OUTPUT_FILE = 'resources/DK_markets_resp.json'
@@ -54,15 +55,15 @@ def get_lines_json(fetch=True):
         return data
 
 # Output format: {'team': 'MIA Dolphin', 'spread': '12.5', 'odds': '-110', 'diff': ''}
-def get_draft_kings_lines(fetch=True):
-    current_date = datetime.now()
+def get_draft_kings_lines(fetch=True, now=None):
+    now = now or time_util.now()
     lines_json = get_lines_json(fetch)
 
     week_marketIds = []
     dk_lines_data = []
     for event in lines_json['events']:
-        start_event_date = datetime.strptime(event['startEventDate'][:-9], '%Y-%m-%dT%H:%M:%S')
-        if start_event_date <= current_date + timedelta(days=7): # Todo add first week override
+        start_event_date = time_util.parse_utc_iso(event['startEventDate'])
+        if date_util.is_in_current_week(start_event_date, now):
             event_id = event['id']
             for market in lines_json['markets']:
                 market_id = market['id']

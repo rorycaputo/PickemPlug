@@ -8,6 +8,7 @@ tabulate = "*"
 requests = "*"
 lxml = "*"
 brotli = "*"
+tzdata = "*"
 
 [dev-packages]
 selenium = "*"

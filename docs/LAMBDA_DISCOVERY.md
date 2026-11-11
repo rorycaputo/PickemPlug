@@ -42,7 +42,7 @@ The pipeline itself suits Lambda: fetch four sources, build a table, render a CS
 | 4 | **Windows-built zip.** `package.zip` contains `lxml/etree.cp310-win_amd64.pyd`, which won't import on Lambda's Linux. | `package.zip` | Blocker | n/a |
 | 5 | **Where output goes.** The HTML and CSV are the product, and nothing says where they end up. | n/a | Design decision | n/a |
 | 6 | **Credentials in source.** Email and a base64 password are committed to git. Base64 is not encryption. | `pickem.py` | Fix before deploying | `externalize-pickem-credentials` |
-| 7 | **Timezones.** Lambda `datetime.now()` is UTC. `date_util` assumes Eastern (8:30 PM MNF cutover) with naive datetimes. Week number flips about 4 hours early; DK 7-day window and CSV filenames shift too. | `date_util.py`, `__main__.py`, `draft_kings.py` | Moderate | n/a |
+| 7 | **Timezones.** Lambda `datetime.now()` is UTC. `date_util` assumes Eastern (8:30 PM MNF cutover) with naive datetimes. Week number flips about 4 hours early; DK 7-day window and CSV filenames shift too. | `date_util.py`, `__main__.py`, `draft_kings.py` | Moderate | ✅ `standardize-timezones` |
 | 8 | **Failure handling.** If DK or ESPN returns `None`, `body.json()` or `espn_marketplace_json['data']` raises, so one flaky source kills the run. Async Lambda invocations retry twice by default, so a crash means three scrapes. | `draft_kings.py`, `espn_bet.py`, `pickem.py` | Moderate | n/a |
 | 9 | **Datacenter IPs.** DK, ESPN and CBS may block AWS IP ranges even though they work from a home IP. | n/a | Unknown, test early | n/a |
 | 10 | **Shared `requests.Session()` defaults.** Created once at import, so cookies persist across warm invocations. | `apis.py` | Minor | `pickem-session-cookie-fetch` (partial) |
@@ -79,7 +79,7 @@ This decides whether the Lambda is a zip or a container image.
 1. ✅ Refactor: thin `lambda_function.py`, move the body into a core module, pass config in instead of reading constants. *(Done: archived as `refactor-run-entrypoints`; core is `pickem_plug.py`.)*
    - ⬜ Move credentials to env vars or SSM. *(Still open; credentials are still hardcoded in `pickem.py`.)*
 2. Make IO pluggable: the core returns the CSV and HTML as strings or bytes, and a thin layer writes them to disk locally or to S3/SES on Lambda. Use `/tmp` for any caches.
-3. Fix timezones: use `ZoneInfo('America/New_York')` throughout.
+3. ✅ Fix timezones: use `ZoneInfo('America/New_York')` throughout. *(Done: `standardize-timezones`. Sources parse to aware datetimes, NFL week logic runs in Eastern, and `DISPLAY_TZ` (default Central) is display-only.)*
 4. Make failures partial: a missing source becomes an empty list plus a warning, and doesn't take down the whole run.
 5. Spike the datacenter-IP question early: run the three HTTP fetchers from a throwaway Lambda before building anything else around them.
 

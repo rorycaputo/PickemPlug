@@ -17,11 +17,12 @@ Uses only the standard library (csv, re, argparse) plus lxml.
 import csv
 import os
 import re
-from datetime import datetime
 
 from lxml import etree
 from lxml.html.builder import E
 from lxml.html import tostring
+
+import time_util
 
 
 # --------------------------------------------------------------------------
@@ -258,10 +259,12 @@ def build_body_row(row, boundary_cols):
     return E.tr(*cells)
 
 
-def build_html(rows, title='CSV Export', sub_headers=None, preface_lines=None, header_text=None):
+def build_html(rows, generated_at, title='CSV Export', sub_headers=None, preface_lines=None, header_text=None):
     """
     Args:
         rows: list of CSV rows (first row is the header).
+        generated_at: aware datetime shown as the "generated" time, converted to
+            the display zone.
         title: page title (used in <title>, and as the subtitle line
             above the table unless overridden by header_text below).
         sub_headers: optional list of exactly 3 words (e.g. ['word0',
@@ -350,7 +353,7 @@ def build_html(rows, title='CSV Export', sub_headers=None, preface_lines=None, h
     table_wrapper = E.div(table, {'class': 'table-scroll'})
 
     subtitle = cell_to_element(
-        'h2', f'{title} — generated {datetime.now().strftime("%d_%m_%y_%H_%M")}'
+        'h2', f'{title} — generated {time_util.to_display(generated_at).strftime("%d_%m_%y_%H_%M %Z")}'
     )
 
     body_children = []
@@ -394,6 +397,7 @@ def superscript_daggers(html_str):
 
 def create_html(
     csv_filename,
+    generated_at,
     output_filename=None,
     title=None,
     sub_headers=None,
@@ -406,6 +410,8 @@ def create_html(
 
     Args:
         csv_filename: Path to the input CSV file.
+        generated_at: aware datetime for the "generated" time in the subtitle
+            (the CSV's creation time); shown in the display zone.
         output_filename: Path to write the HTML file to. If omitted,
             defaults to `csv_filename` with its extension replaced by `.html`.
         title: Optional page title. Defaults to `csv_filename`.
@@ -433,6 +439,7 @@ def create_html(
         sub_headers=sub_headers,
         preface_lines=preface_lines,
         header_text=header_text,
+        generated_at=generated_at,
     )
 
     if output_filename is None:

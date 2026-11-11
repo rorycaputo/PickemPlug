@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Optional
 from tabulate import tabulate
 import re
-from datetime import datetime
 import draft_kings
 import pickem
 import espn_bet
@@ -10,11 +9,11 @@ import odds_shark
 import spread_odds_converter
 import util
 import date_util
+import time_util
 import csv_util
 import html_util
 
 # todo get CBS odds at time of go-live
-# todo exclude DK and ESPN games that have started
 
 #  todo see if we can just exclude if its false and there's no file saved (or add another bypass setting)
 
@@ -77,32 +76,37 @@ HTML_READOUT_FILENAME = './out/readout.html'
 
 def run(config=None):
     config = config or RunConfig()
-    nfl_week = date_util.get_nfl_week(datetime.now())
+    time_util.get_display_tz()
+    if config.override_csv_data is not None:
+        csv_util.get_generated_at(config.override_csv_data)
+    now = time_util.now()
+    nfl_week = date_util.get_nfl_week(now)
     pickem_lines = pickem.get_pickem_lines(config.fetch_pickem)
-    os_lines = odds_shark.get_odds_shark_spreads(config.fetch_oddshark)
-    dk_lines = draft_kings.get_draft_kings_lines(config.fetch_draftkings)
-    espn_lines = espn_bet.get_espn_bet_lines(config.fetch_espnbet)
+    os_lines = odds_shark.get_odds_shark_spreads(config.fetch_oddshark, now)
+    dk_lines = draft_kings.get_draft_kings_lines(config.fetch_draftkings, now)
+    espn_lines = espn_bet.get_espn_bet_lines(config.fetch_espnbet, now)
     print(VALUE_DIFF_DISCLAIMER)
     print(COVERS_DISCLAIMER)
 
     final_tabulate_table, final_tabulate_dict = build_table(pickem_lines, dk_lines, espn_lines, os_lines)
+    # todo - Console encoding: in a piped terminal, print(final_tabulate_table) fails on Windows' cp1252 encoding. That line isn't part of this change. Run with PYTHONUTF8=1, or in a UTF-8 terminal, and it works.
     print(final_tabulate_table)
     # todo Average excluding max and min outliers?
     # todo actual timestamps for each book
-    # todo actual csv timestamp for 'Generated' text on html
     # todo format for email
     # todo make only 'spread' and 'odds' neccessary for the sub-headers so CBS is in there (if we can figure out CBS initial odds)
     if config.override_csv_data is not None:
         output_csv = config.override_csv_data
     else:
-        output_csv = csv_util.create_csv(final_tabulate_dict, f'{CSV_OUTPUT_FILENAME}_{datetime.now().strftime("%m_%d_%y_%H_%M")}.csv')
+        output_csv = csv_util.create_csv(final_tabulate_dict, csv_util.stamped_filename(CSV_OUTPUT_FILENAME, now))
     html_util.create_html(
         csv_filename=output_csv,
+        generated_at=csv_util.get_generated_at(output_csv),
         output_filename=HTML_READOUT_FILENAME,
         title=f'{HTML_HEADER_TEXT}{nfl_week} - Pickem',
         header_text=f'{HTML_HEADER_TEXT}{nfl_week}',
         sub_headers=[SPREAD_HEADER, ODDS_HEADER, DIFF_HEADER],
-        preface_lines=[VALUE_DIFF_DISCLAIMER, COVERS_DISCLAIMER]
+        preface_lines=[VALUE_DIFF_DISCLAIMER, COVERS_DISCLAIMER],
     )
     return RunResult(week=nfl_week, csv_path=output_csv, html_path=HTML_READOUT_FILENAME)
 
