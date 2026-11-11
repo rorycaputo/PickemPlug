@@ -19,7 +19,8 @@ def build_parser():
     for key in FETCH_OPTION_KEYS:
         flag = '--' + key.replace('_', '-')
         parser.add_argument(flag, dest=key, action=argparse.BooleanOptionalAction, default=True,
-                            help=f'Fetch {SOURCE_NAMES[key]} live; --no-{flag[2:]} uses saved data.')
+                            help=f'Fetch {SOURCE_NAMES[key]} live; --no-{flag[2:]} uses saved data. '
+                                 '(default: %(default)s)')
     parser.add_argument('--override-csv', dest='override_csv_data', metavar='PATH', default=None,
                         help='Skip writing a new CSV and build the HTML from this existing one.')
     return parser
