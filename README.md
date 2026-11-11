@@ -67,8 +67,6 @@ pipenv run python -m unittest discover tests
 
 Example event: `{"fetch_espnbet": false}`
 
-Note: a cache-only run (every `fetch_*` off) works on Lambda; live fetches from Lambda are untested (datacenter IPs, partial-failure handling). See `docs/LAMBDA_DISCOVERY.md`.
-
 ### Storage
 
 Where files go is set by environment variables. Local runs need neither.
@@ -104,7 +102,7 @@ bash scripts/build-lambda.sh     # build only: writes build/<timestamp>-<sha>/pa
 | `--skip-auth-upload` | Don't run `upload-pickem-auth.sh` |
 | `--no-invoke` | Skip the smoke invoke; `live` is then not moved |
 
-Each deploy publishes a numbered version described by its git sha, smoke-invokes it with every `fetch_*` off, and only then points the `live` alias at it. Schedulers should target `pickem:live`.
+Each deploy publishes a numbered version described by its git sha, smoke-invokes it with every `fetch_*` off, and only then points the `live` alias at it. Schedulers should target `pickem:live` (see Schedule below).
 
 Roll back by pointing `live` at an earlier version:
 
@@ -124,6 +122,30 @@ for f in pickem.html DK_markets_resp.json espn_markets_resp.json odds_shark.html
 done
 ```
 
+
+### Schedule
+
+```bash
+bash scripts/deploy-schedule.sh --check     # validate deploy/schedule.json, show the current rules; changes nothing
+bash scripts/deploy-schedule.sh             # create or update the rules from the file
+bash scripts/deploy-schedule.sh --disable   # apply, but leave every rule disabled
+```
+
+`deploy/schedule.json` holds a list of schedules. Each becomes its own EventBridge rule that invokes `pickem:live`. The script needs the `live` alias to exist (deploy first) and is safe to re-run. Rules it manages (names starting `pickem-`) that are no longer in the file are deleted.
+
+| Field | Meaning |
+|-------|---------|
+| `name` | Rule name; must start with `pickem-` and be unique |
+| `note` | Optional free text, for humans |
+| `schedule` | `cron(...)` or `rate(...)`, in UTC |
+| `enabled` | `false` creates the rule disabled |
+| `event` | Payload sent on each run: only the `fetch_*` booleans (see Lambda above) |
+
+The function name and region come from `deploy/lambda.json`. The environment variables set there are unaffected.
+
+The shipped file runs a live fetch of all four sources three times a week for the rest of the 2026 regular season: Thursday 8 am and 6 pm Central, and Sunday 8 am Central, ending after Week 18 (Thursday Jan 7 and Sunday Jan 10, 2027). EventBridge rules use UTC and have no end date, so each run is split in two: a day-of-week cron for November and December, and exact dates for January. Central stays on standard time (UTC-6) throughout, so Thursday 6 pm is Friday 00:00 UTC (and Thursday Dec 31 6 pm is Jan 1 00:00 UTC). Scheduling next season means editing the dates in the file.
+
+In addition to the deploy permissions above, the user needs `events:PutRule`, `PutTargets`, `RemoveTargets`, `DescribeRule`, `ListRules`, `ListTargetsByRule` and `DeleteRule`, plus `lambda:AddPermission`, `RemovePermission` and `GetPolicy`.
 
 ## Layout
 

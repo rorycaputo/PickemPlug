@@ -1,0 +1,76 @@
+{
+  "schedules": [
+    {
+      "name": "pickem-thu-8am-novdec",
+      "note": "Thursday 8 am Central",
+      "schedule": "cron(0 14 ? NOV,DEC THU 2026)",
+      "enabled": true,
+      "event": {
+        "fetch_pickem": true,
+        "fetch_draftkings": true,
+        "fetch_espnbet": true,
+        "fetch_oddshark": true
+      }
+    },
+    {
+      "name": "pickem-thu-8am-jan",
+      "note": "Thursday 8 am Central, final week",
+      "schedule": "cron(0 14 7 JAN ? 2027)",
+      "enabled": true,
+      "event": {
+        "fetch_pickem": true,
+        "fetch_draftkings": true,
+        "fetch_espnbet": true,
+        "fetch_oddshark": true
+      }
+    },
+    {
+      "name": "pickem-thu-6pm-novdec",
+      "note": "Thursday 6 pm Central (Friday 00:00 UTC)",
+      "schedule": "cron(0 0 ? NOV,DEC FRI 2026)",
+      "enabled": true,
+      "event": {
+        "fetch_pickem": true,
+        "fetch_draftkings": true,
+        "fetch_espnbet": true,
+        "fetch_oddshark": true
+      }
+    },
+    {
+      "name": "pickem-thu-6pm-jan",
+      "note": "Thursday 6 pm Central, Dec 31 and Jan 7",
+      "schedule": "cron(0 0 1,8 JAN ? 2027)",
+      "enabled": true,
+      "event": {
+        "fetch_pickem": true,
+        "fetch_draftkings": true,
+        "fetch_espnbet": true,
+        "fetch_oddshark": true
+      }
+    },
+    {
+      "name": "pickem-sun-8am-novdec",
+      "note": "Sunday 8 am Central",
+      "schedule": "cron(0 14 ? NOV,DEC SUN 2026)",
+      "enabled": true,
+      "event": {
+        "fetch_pickem": true,
+        "fetch_draftkings": true,
+        "fetch_espnbet": true,
+        "fetch_oddshark": true
+      }
+    },
+    {
+      "name": "pickem-sun-8am-jan",
+      "note": "Sunday 8 am Central, final weeks",
+      "schedule": "cron(0 14 3,10 JAN ? 2027)",
+      "enabled": true,
+      "event": {
+        "fetch_pickem": true,
+        "fetch_draftkings": true,
+        "fetch_espnbet": true,
+        "fetch_oddshark": true
+      }
+    }
+  ]
+}

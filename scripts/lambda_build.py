@@ -5,6 +5,11 @@
   python scripts/lambda_build.py package <run_dir> --git-sha SHA [--dirty]
                                                             zip <run_dir>/pkg, write manifest.json
   python scripts/lambda_build.py get <file.json> <key>      print one top-level value
+  python scripts/lambda_build.py schedule <schedule.json> <config.json>
+                                                            validate the trigger config; print function_name=, region=,
+                                                            then name<TAB>expression<TAB>enabled per schedule
+  python scripts/lambda_build.py event-json <schedule.json> <name>
+                                                            print one schedule's event payload
 """
 import argparse
 import base64
@@ -30,6 +35,8 @@ FIELDS = {
     'memory_size': (int, None),
     'environment': (dict, None),
 }
+EVENT_KEYS = ('fetch_pickem', 'fetch_draftkings', 'fetch_espnbet', 'fetch_oddshark')
+SCHEDULE_FIELDS = ('name', 'schedule', 'enabled', 'event')
 KIND_NAMES = {str: 'a string', int: 'an integer', dict: 'an object'}
 
 
@@ -79,6 +86,58 @@ def load_config(path):
     return config
 
 
+def load_schedule(path):
+    """The validated list of trigger schedules. Raises ConfigError naming the offending schedule and key."""
+    try:
+        with open(path, encoding='utf-8') as file:
+            config = json.load(file)
+    except (OSError, json.JSONDecodeError) as err:
+        raise ConfigError(f'cannot read {path}: {err}') from None
+    if not isinstance(config, dict) or set(config) != {'schedules'}:
+        raise ConfigError(f'{path} must be an object with a single "schedules" key')
+    schedules = config['schedules']
+    if not isinstance(schedules, list) or not schedules:
+        raise ConfigError('schedules must be a non-empty list')
+
+    seen = set()
+    for index, entry in enumerate(schedules, 1):
+        if not isinstance(entry, dict):
+            raise ConfigError(f'schedule #{index} must be an object')
+        label = entry.get('name', f'#{index}')
+        unknown = sorted(set(entry) - set(SCHEDULE_FIELDS) - {'note'})
+        if unknown:
+            raise ConfigError(f'schedule {label}: unknown key(s): {", ".join(unknown)}')
+        for key in SCHEDULE_FIELDS:
+            if key not in entry:
+                raise ConfigError(f'schedule {label}: missing key: {key}')
+
+        name = entry['name']
+        if not isinstance(name, str) or not re.fullmatch(r'pickem-[A-Za-z0-9._-]{1,57}', name):
+            raise ConfigError(f'schedule {label}: name must be "pickem-" plus letters, digits, . _ -; got {name!r}')
+        if name in seen:
+            raise ConfigError(f'schedule {name}: duplicate name')
+        seen.add(name)
+        expression = entry['schedule']
+        if not isinstance(expression, str) or not re.fullmatch(r'(cron|rate)\(.+\)', expression):
+            raise ConfigError(f'schedule {name}: schedule must be a cron(...) or rate(...) expression; got {expression!r}')
+        if not isinstance(entry['enabled'], bool):
+            raise ConfigError(f'schedule {name}: enabled must be true or false')
+        if 'note' in entry and not isinstance(entry['note'], str):
+            raise ConfigError(f'schedule {name}: note must be a string')
+        if not isinstance(entry['event'], dict):
+            raise ConfigError(f'schedule {name}: event must be an object')
+        for key, value in entry['event'].items():
+            upper = key.upper()
+            if upper in DENIED_ENV_KEYS or any(word in upper for word in DENIED_ENV_WORDS):
+                raise ConfigError(f'schedule {name}: event key {key} looks like a credential or session; '
+                                  'secrets must never be in the schedule config')
+            if key not in EVENT_KEYS:
+                raise ConfigError(f'schedule {name}: event key {key!r} is not one of {", ".join(EVENT_KEYS)}')
+            if not isinstance(value, bool):
+                raise ConfigError(f'schedule {name}: event key {key} must be true or false')
+    return schedules
+
+
 def derived(config):
     return {
         'platform': PLATFORMS[config['architecture']],
@@ -92,6 +151,23 @@ def cmd_config(args):
     values.update(derived(config))
     for key, value in values.items():
         print(f'{key}={value}')
+
+
+def cmd_schedule(args):
+    """function_name= and region= lines, then one tab-separated line per schedule: name, expression, enabled."""
+    deploy = load_config(args.config)
+    print(f'function_name={deploy["function_name"]}')
+    print(f'region={deploy["region"]}')
+    for entry in load_schedule(args.schedule):
+        print(f'{entry["name"]}	{entry["schedule"]}	{"true" if entry["enabled"] else "false"}')
+
+
+def cmd_event_json(args):
+    for entry in load_schedule(args.schedule):
+        if entry['name'] == args.name:
+            print(json.dumps(entry['event']))
+            return
+    raise ConfigError(f'no schedule named {args.name}')
 
 
 def cmd_env_json(args):
@@ -172,6 +248,16 @@ def main():
     package.add_argument('--dirty', action='store_true')
     package.set_defaults(func=cmd_package)
 
+    schedule = commands.add_parser('schedule')
+    schedule.add_argument('schedule')
+    schedule.add_argument('config')
+    schedule.set_defaults(func=cmd_schedule)
+
+    event_json = commands.add_parser('event-json')
+    event_json.add_argument('schedule')
+    event_json.add_argument('name')
+    event_json.set_defaults(func=cmd_event_json)
+
     get = commands.add_parser('get')
     get.add_argument('file')
     get.add_argument('key')
@@ -181,7 +267,7 @@ def main():
     try:
         args.func(args)
     except ConfigError as err:
-        raise SystemExit(f'Error: deploy config: {err}') from None
+        raise SystemExit(f'Error: config: {err}') from None
 
 
 if __name__ == '__main__':
