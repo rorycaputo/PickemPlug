@@ -14,9 +14,6 @@ pipenv install --dev
 pipenv run python __main__.py
 ```
 
-### Pickem login credentials
-
-When the saved Pickem session has expired, the Selenium login needs your CBS credentials from the `PICKEM_EMAIL` and `PICKEM_PASSWORD` environment variables (plain-text password). Set them in your shell, or in a git-ignored `.env` file in the project root (VS Code's launch config loads it); copy `.env.example` to `.env` to get started. They are not needed while the saved session is still valid.
 
 ### Options
 
@@ -46,6 +43,10 @@ pipenv run python __main__.py --override-csv out/csv/spreads_output_11_11_26_02_
 ```
 
 `pipenv run python __main__.py --help` lists all options and their defaults.
+
+### Pickem login credentials
+
+When the saved Pickem session has expired, the Selenium login needs your CBS credentials from the `PICKEM_EMAIL` and `PICKEM_PASSWORD` environment variables (plain-text password). Set them in your shell, or in a git-ignored `.env` file in the project root (VS Code's launch config loads it); copy `.env.example` to `.env` to get started. They are not needed while the saved session is still valid.
 
 ### Time zones
 

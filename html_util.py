@@ -292,16 +292,27 @@ def build_html(rows, generated_at, title='CSV Export', sub_headers=None, preface
     preface_elements = [cell_to_element('p', line) for line in (preface_lines or [])]
 
     style = E.style("""
+        :root { --gutter: 2rem; }
         body {
             font-family: 'Courier New', Consolas, monospace;
             background: #1e1e1e;
             color: #d3d7cf;
-            padding: 2rem;
+            padding: var(--gutter) 0 var(--gutter) var(--gutter);
+        }
+        h1, h2, .preface { padding-right: var(--gutter); }
+        .table-inner {
+            width: max-content;
+            min-width: 100%;
+            box-sizing: border-box;
+            padding-right: var(--gutter);
         }
         h1 { font-size: 1.4rem; font-weight: bold; color: #eee; margin: 0 0 0.2rem 0; }
         h2 { font-size: 1.1rem; font-weight: normal; color: #888; margin: 0 0 0.6rem 0; }
         .preface p {
             margin: 0 0 0.4rem 0;
+        }
+        .preface {
+            margin-bottom: 1.2rem;
         }
         .table-scroll {
             overflow-x: auto;
@@ -345,9 +356,15 @@ def build_html(rows, generated_at, title='CSV Export', sub_headers=None, preface
         table.data-table .col-boundary {
             border-left: 3px solid #777;
         }
+        @media (max-width: 600px) {
+            :root { --gutter: 0.75rem; }
+            h1 { font-size: 1.2rem; }
+            h2 { font-size: 0.95rem; }
+            table.data-table { font-size: 0.85rem; }
+            table.data-table th, table.data-table td { padding: 4px 6px; }        }
     """)
 
-    table_wrapper = E.div(table, {'class': 'table-scroll'})
+    table_wrapper = E.div(E.div(table, {'class': 'table-inner'}), {'class': 'table-scroll'})
 
     subtitle = cell_to_element(
         'h2', f'{title} — generated {time_util.to_display(generated_at).strftime("%d_%m_%y_%H_%M %Z")}'
@@ -370,7 +387,12 @@ def build_html(rows, generated_at, title='CSV Export', sub_headers=None, preface
     """))
 
     doc = E.html(
-        E.head(E.meta(charset='utf-8'), E.title(title), style),
+        E.head(
+            E.meta(charset='utf-8'),
+            E.meta(name='viewport', content='width=device-width, initial-scale=1'),
+            E.title(title),
+            style,
+        ),
         E.body(*body_children),
     )
     return doc

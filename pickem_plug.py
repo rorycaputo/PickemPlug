@@ -71,6 +71,8 @@ SORT_BY_HEADERS = [AVG_ALL] # Spread Diff Header or AVG_ALL
 HTML_HEADER_TEXT = 'Week '
 VALUE_DIFF_DISCLAIMER = '* Calculated using AI-researched weights for each point change based on modern era games. Displayed in cents.'
 COVERS_DISCLAIMER = '\u2020 From Covers.com'
+ARROW_UP = '\u25B2'
+ARROW_DOWN = '\u25BC'
 
 CSV_OUTPUT_KEY_BASE = 'out/csv/spreads_output'
 HTML_READOUT_KEY = 'out/readout.html'
@@ -383,15 +385,15 @@ def get_spread_display_arrow(spread_diff):
         spread_diff = float(re.sub(r'[^\d.-]', '',spread_diff))
     display_arrow = ''
     if spread_diff >= 1:
-        display_arrow = '\033[92m \u2B9D\033[00m'
+        display_arrow = f'\033[92m {ARROW_UP}\033[00m'
     elif spread_diff >=0.5 and spread_diff < 1:
-        display_arrow = ' \u2B9D'
+        display_arrow = f' {ARROW_UP}'
     elif spread_diff > 0 and spread_diff < 0.5:
         display_arrow = ' ^'
     if spread_diff <= -1:
-        display_arrow = '\033[91m \u2B9F\033[00m'
+        display_arrow = f'\033[91m {ARROW_DOWN}\033[00m'
     elif spread_diff <= -0.5 and spread_diff > -1:
-        display_arrow = ' \u2B9f'
+        display_arrow = f' {ARROW_DOWN}'
     elif spread_diff < 0 and spread_diff > -0.5:
         display_arrow = ' v'
 
@@ -402,15 +404,15 @@ def get_odds_display_arrow(odds):
     if (str(odds).lower() == 'even'):
         odds = 100
     if float(odds) <= -120:
-        display_arrow = '\033[92m \u2B9D\033[00m'
+        display_arrow = f'\033[92m {ARROW_UP}\033[00m'
     elif float(odds) <= -115:
-        display_arrow = ' \u2B9D'
+        display_arrow = f' {ARROW_UP}'
     elif float(odds) < -110: # Book default
         display_arrow = ' ^'
     elif float(odds) >= -100: # Even
-        display_arrow = '\033[91m \u2B9F\033[00m'
+        display_arrow = f'\033[91m {ARROW_DOWN}\033[00m'
     elif float(odds) >= -105:
-        display_arrow = ' \u2B9f'
+        display_arrow = f' {ARROW_DOWN}'
     elif float(odds) > -110:
         display_arrow = ' v'
 
@@ -420,15 +422,15 @@ def get_cents_display_arrow(cents_diff):
     display_arrow = ''
     if cents_diff is not None:
         if float(cents_diff) >= 30:
-            display_arrow = '\033[92m \u2B9D\033[00m'
+            display_arrow = f'\033[92m {ARROW_UP}\033[00m'
         elif float(cents_diff) >= 15:
-            display_arrow = ' \u2B9D'
+            display_arrow = f' {ARROW_UP}'
         elif float(cents_diff) >= 5:
             display_arrow = ' ^'
         elif float(cents_diff) <= -30:
-            display_arrow = '\033[91m \u2B9F\033[00m'
+            display_arrow = f'\033[91m {ARROW_DOWN}\033[00m'
         elif float(cents_diff) <= -15:
-            display_arrow = ' \u2B9f'
+            display_arrow = f' {ARROW_DOWN}'
         elif float(cents_diff) <= -5:
             display_arrow = ' v'
 
