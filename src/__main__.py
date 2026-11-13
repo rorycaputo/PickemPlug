@@ -1,4 +1,4 @@
-"""Local command-line entry point.  Run: python __main__.py [--no-fetch-pickem ...]"""
+"""Local command-line entry point.  Run: python src [--no-fetch-pickem ...]"""
 import argparse
 
 from pickem_plug import FETCH_OPTION_KEYS, RunConfig, run

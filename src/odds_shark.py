@@ -1,12 +1,12 @@
 from lxml import html
 # import html as phtml
 from datetime import datetime, timedelta
-import apis
+import apis as apis
 import statistics
 import math
-import date_util
-import storage
-import time_util
+import date_util as date_util
+import storage as storage
+import time_util as time_util
 
 SAVED_DATA_KEY = 'cache/odds_shark.html'
 

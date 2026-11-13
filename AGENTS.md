@@ -4,7 +4,7 @@
 
 This app runs in two places, and they have different capabilities:
 
-- **Local (developer machine)** -- `python __main__.py`. Has Selenium/Firefox
+- **Local (developer machine)** -- `python src`. Has Selenium/Firefox
   (`pipenv install --dev`) and the CBS credentials.
 - **AWS Lambda** -- `lambda_function.lambda_handler`. HTTP only: no Selenium,
   no browser, and no CBS credentials.

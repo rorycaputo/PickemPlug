@@ -11,7 +11,7 @@ pipenv install --dev
 ## Run locally
 
 ```
-pipenv run python __main__.py
+pipenv run python src
 ```
 
 
@@ -30,19 +30,19 @@ Examples:
 
 ```
 # Everything live
-pipenv run python __main__.py
+pipenv run python src
 
 # Skip the CBS Pickem Selenium login, reuse the saved Pickem page
-pipenv run python __main__.py --no-fetch-pickem
+pipenv run python src --no-fetch-pickem
 
 # Fully offline, from saved data only
-pipenv run python __main__.py --no-fetch-pickem --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark
+pipenv run python src --no-fetch-pickem --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark
 
 # Rebuild the HTML from an existing CSV without writing a new one
-pipenv run python __main__.py --override-csv out/csv/spreads_output_11_11_26_02_16_UTC.csv
+pipenv run python src --override-csv out/csv/spreads_output_11_11_26_02_16_UTC.csv
 ```
 
-`pipenv run python __main__.py --help` lists all options and their defaults.
+`pipenv run python src --help` lists all options and their defaults.
 
 ### Pickem login credentials
 
@@ -55,7 +55,7 @@ Times shown to you (the HTML "generated" time) use the `DISPLAY_TZ` environment 
 ## Tests
 
 ```
-pipenv run python -m unittest discover tests
+PYTHONPATH=src pipenv run python -m unittest discover -s src/tests
 ```
 
 ## AWS
@@ -86,7 +86,7 @@ bash scripts/upload-pickem-auth.sh --check   # one-time: verifies the AWS CLI, c
 bash scripts/upload-pickem-auth.sh           # upload resources/pickem_auth.json
 ```
 
-The script needs the AWS CLI and a bash (Git Bash on Windows), and reads `AWS_DEFAULT_REGION` / `AWS_PROFILE` from the environment or `.env`. If `resources/pickem_auth.json` is missing, or its session has expired, it prompts you to run `python __main__.py --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark` to regenerate it (for an expired session you can also upload it anyway or abort). Repeat the upload whenever the session expires.
+The script needs the AWS CLI and a bash (Git Bash on Windows), and reads `AWS_DEFAULT_REGION` / `AWS_PROFILE` from the environment or `.env`. If `resources/pickem_auth.json` is missing, or its session has expired, it prompts you to run `python src --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark` to regenerate it (for an expired session you can also upload it anyway or abort). Repeat the upload whenever the session expires.
 
 ### Deploy
 
@@ -152,6 +152,6 @@ In addition to the deploy permissions above, the user needs `events:PutRule`, `P
 
 | File | Role |
 |------|------|
-| `__main__.py` | Local command-line entry point |
-| `lambda_function.py` | AWS Lambda entry point |
-| `pickem_plug.py` | The run logic (`run(config)`, `RunConfig`) shared by both |
+| `src/__main__.py` | Local command-line entry point |
+| `src/lambda_function.py` | AWS Lambda entry point |
+| `src/pickem_plug.py` | The run logic (`run(config)`, `RunConfig`) shared by both |

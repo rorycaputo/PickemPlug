@@ -13,7 +13,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 AUTH_FILE='resources/pickem_auth.json'
 PARAM_NAME='/pickemplug/pickem-auth'
-REGEN_CMD='python __main__.py --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark'
+REGEN_CMD='python src --no-fetch-draftkings --no-fetch-espnbet --no-fetch-oddshark'
 
 die() { echo "Error: $*" >&2; exit 1; }
 

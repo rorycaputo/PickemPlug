@@ -123,7 +123,12 @@ $out"
 }
 
 run_tests() {
-  pipenv run python -m unittest discover tests
+  # Tests import the app modules by bare name, as on Lambda, so src/ goes on the path.
+  local output
+  output=$(PYTHONPATH=src pipenv run python -m unittest discover -s src/tests 2>&1) || { echo "$output"; return 1; }
+  echo "$output"
+  # discover exits 0 when it finds nothing; that must not pass the gate.
+  grep -Eq '^Ran [1-9][0-9]* test' <<< "$output" || { echo "Error: no tests were run from src/tests" >&2; return 1; }
 }
 
 build() {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the Lambda package: Linux wheels for the runtime/architecture in deploy/lambda.json,
-# [packages] only, plus the top-level app modules. Local only; makes no AWS calls.
+# [packages] only, plus the app modules from src/. Local only; makes no AWS calls.
 #
 #   bash scripts/build-lambda.sh
 #
@@ -17,7 +17,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 CONFIG=${LAMBDA_CONFIG:-deploy/lambda.json}
 PYTHON=${PYTHON:-python}
 HELPER=scripts/lambda_build.py
-EXCLUDE=(__main__.py __init__.py selenium_pa.py)
+SRC_DIR=${SRC_DIR:-src}
+# Modules left out of the package. src/tests is never copied: only src/*.py files are.
+EXCLUDE=(__main__.py selenium_pa.py)
 
 die() { echo "Error: $*" >&2; exit 1; }
 
@@ -67,13 +69,21 @@ pipenv requirements --hash > "$RUN_DIR/requirements.txt" \
   --implementation cp --only-binary=:all: --no-compile --disable-pip-version-check --quiet \
   || die "pip could not install the locked packages as $CFG_platform wheels for Python $CFG_python_version (see the package named above)"
 
-for file in *.py; do
+[ -d "$SRC_DIR" ] || die "$SRC_DIR directory not found"
+copied=0
+for path in "$SRC_DIR"/*.py; do
+  [ -e "$path" ] || continue
+  file=$(basename "$path")
   skip=0
   for excluded in "${EXCLUDE[@]}"; do
     [ "$file" = "$excluded" ] && skip=1
   done
-  [ "$skip" -eq 0 ] && cp "$file" "$PKG_DIR/"
+  if [ "$skip" -eq 0 ]; then
+    cp "$path" "$PKG_DIR/"
+    copied=$((copied + 1))
+  fi
 done
+[ "$copied" -gt 0 ] || die "no app modules found in $SRC_DIR/"
 
 "$PYTHON" "$HELPER" package "$RUN_DIR" --git-sha "$GIT_SHA" "${DIRTY_FLAG[@]}"
 

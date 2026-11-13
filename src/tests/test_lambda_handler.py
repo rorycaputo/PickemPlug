@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest import mock
 
-import lambda_function
+import lambda_function as lambda_function
 from pickem_plug import RunConfig, RunResult
 
 RESULT = RunResult(week=10, csv_path='./out/x.csv', html_path='./out/readout.html')

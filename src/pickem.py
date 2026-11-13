@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 import requests
 from lxml import etree, html
-import apis
-import storage
+import apis as apis
+import storage as storage
 
 SAVED_PAGE_KEY = 'cache/pickem.html'
 AUTH_VERSION = 1
@@ -107,7 +107,7 @@ def fetch_pickem_html_with_session(cookies, url=POOL_URL):
 def fetch_pickem_html_with_browser():
     """Log in with the browser and refresh the saved session. selenium is imported here so HTTP-only installs don't need it."""
     try:
-        import selenium_pa
+        import selenium_pa as selenium_pa
     except ImportError as err:
         raise RuntimeError('Pickem session is missing or expired and the browser fallback is unavailable '
                            '(selenium is not installed)') from err

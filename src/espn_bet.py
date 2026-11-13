@@ -11,10 +11,10 @@
 from lxml import html
 import json
 import re
-import apis
-import date_util
-import storage
-import time_util
+import apis as apis
+import date_util as date_util
+import storage as storage
+import time_util as time_util
 
 SAVED_DATA_KEY = 'cache/espn_markets_resp.json'
 

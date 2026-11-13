@@ -2,17 +2,17 @@ from dataclasses import dataclass
 from typing import Optional
 from tabulate import tabulate
 import re
-import draft_kings
-import pickem
-import espn_bet
-import odds_shark
-import spread_odds_converter
-import util
-import date_util
-import time_util
-import csv_util
-import html_util
-import storage
+import draft_kings as draft_kings
+import pickem as pickem
+import espn_bet as espn_bet
+import odds_shark as odds_shark
+import spread_odds_converter as spread_odds_converter
+import util as util
+import date_util as date_util
+import time_util as time_util
+import csv_util as csv_util
+import html_util as html_util
+import storage as storage
 
 # todo get CBS odds at time of go-live
 
