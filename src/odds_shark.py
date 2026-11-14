@@ -28,37 +28,11 @@ spread_url = 'https://www.covers.com/sport/football/nfl/odds'
 
 def get_spread_html(fetch=True):
     if fetch:
-        headers = {
-            'Host': 'www.covers.com',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
-            'DNT': '1',
-            'Pragma': 'no-cache',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Sec-GPC': '1',
-            'Priority': 'u=0, i',
-            'Cache-Control': 'no-cache',
-            'TE': 'trailers'
-        }
-
-        # params = {
-        #     '_format': 'json',
-        # }
-
-        body = apis.call_get_api(spread_url, headers)
-        if body is not None:
-            odds_shark_html = body.text
-            print(f'Writing Odds Shark html to {SAVED_DATA_KEY} for later use')
-            storage.write_text(SAVED_DATA_KEY, odds_shark_html)
-            return html.fromstring(odds_shark_html)
-        return None
+        with apis.new_session() as session:
+            odds_shark_html = apis.get(session, spread_url, headers=apis.NAVIGATION_HEADERS).text
+        print(f'Writing Odds Shark html to {SAVED_DATA_KEY} for later use')
+        storage.write_text(SAVED_DATA_KEY, odds_shark_html)
+        return html.fromstring(odds_shark_html)
     else:
         return html.fromstring(storage.read_text(SAVED_DATA_KEY))
 

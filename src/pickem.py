@@ -90,14 +90,15 @@ def is_logged_in_pickem_page(response):
 
 def fetch_pickem_html_with_session(cookies, url=POOL_URL):
     """Request the pool page with the saved cookies. Returns the page HTML, or None if not logged in or the request failed."""
-    session = requests.Session()
-    for cookie in cookies:
-        session.cookies.set(cookie['name'], cookie['value'],
-                            domain=cookie.get('domain') or '.cbssports.com', path=cookie.get('path') or '/')
-    result = apis.call_get_api_with_session(url, session=session, timeout=REQUEST_TIMEOUT_SECONDS)
-    if not isinstance(result, tuple):  # the helper returns the exception object on failure
-        return None
-    response = result[0]
+    with apis.new_session() as session:
+        for cookie in cookies:
+            session.cookies.set(cookie['name'], cookie['value'],
+                                domain=cookie.get('domain') or '.cbssports.com', path=cookie.get('path') or '/')
+        try:
+            response = apis.get(session, url, headers=apis.NAVIGATION_HEADERS, timeout=REQUEST_TIMEOUT_SECONDS)
+        except requests.RequestException as err:
+            print(f'Pickem request failed: {err}')
+            return None
     if not is_logged_in_pickem_page(response):
         print('Saved Pickem session was not accepted')
         return None

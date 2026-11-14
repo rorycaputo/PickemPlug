@@ -1,5 +1,6 @@
-from lxml import html
 import json
+import re
+import requests
 import apis
 import date_util
 import storage
@@ -7,55 +8,65 @@ import time_util
 
 SAVED_DATA_KEY = 'cache/DK_markets_resp.json'
 
-# lines_url = f'https://sportsbook.draftkings.com/leagues/football/nfl'
-lines_url = 'https://sportsbook-nash.draftkings.com/sites/US-IL-SB/api/sportscontent/controldata/league/leagueSubcategory/v1/markets?isBatchable=false&templateVars=88808%2C4518&eventsQuery=%24filter%3DleagueId%20eq%20%2788808%27%20AND%20clientMetadata%2FSubcategories%2Fany%28s%3A%20s%2FId%20eq%20%274518%27%29&marketsQuery=%24filter%3DclientMetadata%2FsubCategoryId%20eq%20%274518%27%20AND%20tags%2Fall%28t%3A%20t%20ne%20%27SportcastBetBuilder%27%29&include=Events&entity=events'
+DK_ORIGIN = 'https://sportsbook.draftkings.com'
+league_page_url = f'{DK_ORIGIN}/leagues/football/nfl'
+lines_url = 'https://sportsbook-nash.draftkings.com/sites/US-IL-SB/api/sportscontent/controldata/league/leagueSubcategory/v1/markets?isBatchable=false&templateVars=88808&eventsQuery=%24filter%3DleagueId%20eq%20%2788808%27%20AND%20clientMetadata%2FSubcategories%2Fany%28s%3A%20s%2FId%20eq%20%274518%27%29&marketsQuery=%24filter%3DclientMetadata%2FsubCategoryId%20eq%20%274518%27%20AND%20tags%2Fall%28t%3A%20t%20ne%20%27SportcastBetBuilder%27%29&include=Events&entity=events'
 
-def get_lines_json(fetch=True):
-    if fetch:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0',
-            'Accept': '*/*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
-            'Referer': 'https://sportsbook.draftkings.com/',
-            'Content-Type': 'application/json charset=utf-8',
-            'X-Client-Feature': 'leagueSubcategory',
-            'X-Client-Name': 'web',
-            'X-Client-Page': 'league',
-            'X-Client-Version': '2537.2.1.7',
-            'X-Client-Widget-Name': 'cms',
-            'X-Client-Widget-Version': '1.3.9',
-            'Origin': 'https://sportsbook.draftkings.com',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site',
-            'Priority': 'u=4',
-            'Pragma': 'no-cache',
-            'Cache-Control': 'no-cache',
-            'TE': 'trailers'
-        }
-        # params = {
-        #     'isBatchable': 'false',
-        #     'templateVars': '88808%2C4518',
-        #     'eventsQuery': '%24filter%3DleagueId%20eq%20%2788808%27%20AND%20clientMetadata%2FSubcategories%2Fany%28s%3A%20s%2FId%20eq%20%274518%27%29',
-        #     'marketsQuery': '%24filter%3DclientMetadata%2FsubCategoryId%20eq%20%274518%27%20AND%20tags%2Fall%28t%3A%20t%20ne%20%27SportcastBetBuilder%27%29',
-        #     'include': 'Events',
-        #     'entity': 'events'
-        # }
-        body = apis.call_get_api(lines_url, headers, None)
-        if body is not None:
-            print(f'Writing Draft Kings json to {SAVED_DATA_KEY} for later use')
-            storage.write_text(SAVED_DATA_KEY, body.text)
-        return body.json()
-    else:
-        return json.loads(storage.read_text(SAVED_DATA_KEY))
+# Version seen in the 2026-11-14 capture; used when the league page can't supply one.
+DK_FALLBACK_CLIENT_VERSION = '2646.5.2'
+
+def get_client_version(session):
+    """Read the client version from the league page, falling back to the known value. Never raises.
+
+    Not strictly necessary: the markets API has accepted stale versions for months, and the page is ~2 MB."""
+    try:
+        page = apis.get(session, league_page_url, headers=apis.NAVIGATION_HEADERS).text
+        match = re.search(r'window\.sbwebversion\s*=\s*"(\d+(?:\.\d+)+)"', page)
+        if match:
+            return match.group(1)
+        print('Draft Kings league page has no client version')
+    except requests.RequestException as err:
+        print(f'Draft Kings league page request failed: {err}')
+    print(f'Using fallback Draft Kings client version {DK_FALLBACK_CLIENT_VERSION}')
+    return DK_FALLBACK_CLIENT_VERSION
+
+def markets_headers(client_version):
+    return {
+        'Accept': '*/*',
+        'Referer': f'{DK_ORIGIN}/',
+        'content-type': 'application/json charset=utf-8',  # malformed, but it's what the site sends
+        'x-client-feature': 'leagueSubcategory',
+        'x-client-name': 'web',
+        'x-client-page': 'league',
+        'x-client-version': client_version,
+        'x-client-widget-name': 'cms',
+        'x-client-widget-version': '3.3.0',
+        'x-pe-cn': 'web',
+        'x-pe-cv': client_version,
+        'x-pe-ep': 'SB',
+        'x-pe-loc': 'US-IL',
+        'Origin': DK_ORIGIN,
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Priority': 'u=4',
+    }
+
+def get_lines_json(session, client_version):
+    body = apis.get(session, lines_url, headers=markets_headers(client_version))
+    print(f'Writing Draft Kings json to {SAVED_DATA_KEY} for later use')
+    storage.write_text(SAVED_DATA_KEY, body.text)
+    return body.json()
 
 # Output format: {'team': 'MIA Dolphin', 'spread': '12.5', 'odds': '-110', 'diff': ''}
 def get_draft_kings_lines(fetch=True, now=None):
     now = now or time_util.now()
-    lines_json = get_lines_json(fetch)
+    if fetch:
+        with apis.new_session() as session:
+            client_version = get_client_version(session)
+            lines_json = get_lines_json(session, client_version)
+    else:
+        lines_json = json.loads(storage.read_text(SAVED_DATA_KEY))
 
     week_marketIds = []
     dk_lines_data = []

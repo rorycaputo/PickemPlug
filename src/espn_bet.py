@@ -21,8 +21,8 @@ SAVED_DATA_KEY = 'cache/espn_markets_resp.json'
 espn_base_url = "https://sportsbook.thescore.bet"
 espn_lines_url = f'{espn_base_url}/sport/football/organization/united-states/competition/nfl/section/lines'
 
-def get_espn_html():
-    return html.fromstring(apis.call_get_api(espn_lines_url).text)
+def get_espn_html(session):
+    return html.fromstring(apis.get(session, espn_lines_url, headers=apis.NAVIGATION_HEADERS).text)
 
 def get_chunk_url(html):
     script_tags = html.xpath('//script[@src[contains(.,"/_next/static/chunks/pages/index-")]]')
@@ -43,20 +43,29 @@ def get_app_version(chunk_blob):
 def get_bearer_token(startup_resp):
     return startup_resp['data']['startup']['anonymousToken']
 
+def check_graphql(resp_json, operation):
+    """GraphQL reports failures with HTTP 200, so stop on an `errors` list or missing `data`."""
+    errors = resp_json.get('errors') if isinstance(resp_json, dict) else None
+    if errors or not (isinstance(resp_json, dict) and resp_json.get('data')):
+        message = errors[0].get('message', errors[0]) if errors else 'no data in response'
+        raise ValueError(f'ESPN Bet {operation} failed: {message}')
+
 def make_api_calls():
-    espn_chunk_url = get_chunk_url(get_espn_html())
-    espn_chunk, session = apis.espn_chunk_get(espn_chunk_url)
-    startup_sha = get_sha_token(espn_chunk, 'Startup')
-    marketplace_sha = get_sha_token(espn_chunk, 'CompetitionPageSectionLinesTabNode')
-    app_version = get_app_version(espn_chunk)
-    bearer_token_resp, session = apis.espn_startup_get(startup_sha, app_version, session)
-    bearer_token = get_bearer_token(bearer_token_resp)
-    espn_marketplace_resp, session = apis.espn_marketplace_get(marketplace_sha, bearer_token, app_version, session)
-    if espn_marketplace_resp is not None:
-        print(f'Writing ESPN Bet json to {SAVED_DATA_KEY} for later use')
-        storage.write_text(SAVED_DATA_KEY, espn_marketplace_resp.text)
-        return espn_marketplace_resp.json()
-    return None
+    with apis.new_session() as session:
+        espn_chunk_url = get_chunk_url(get_espn_html(session))
+        espn_chunk = apis.espn_chunk_get(session, espn_chunk_url, espn_lines_url)
+        startup_sha = get_sha_token(espn_chunk, 'Startup')
+        marketplace_sha = get_sha_token(espn_chunk, 'CompetitionPageSectionLinesTabNode')
+        app_version = get_app_version(espn_chunk)
+        startup_resp = apis.espn_startup_get(session, startup_sha, app_version)
+        check_graphql(startup_resp, 'Startup')
+        bearer_token = get_bearer_token(startup_resp)
+        espn_marketplace_resp = apis.espn_marketplace_get(session, marketplace_sha, bearer_token, app_version)
+    espn_marketplace_json = espn_marketplace_resp.json()
+    check_graphql(espn_marketplace_json, 'CompetitionPageSectionLinesTabNode')
+    print(f'Writing ESPN Bet json to {SAVED_DATA_KEY} for later use')
+    storage.write_text(SAVED_DATA_KEY, espn_marketplace_resp.text)
+    return espn_marketplace_json
 
 # Output format: {'team': 'MIA Dolphin', 'spread': 12.5, 'odds': '-110', 'diff': ''}
 def get_espn_bet_lines(fetch=True, now=None):
