@@ -367,7 +367,7 @@ def build_html(rows, generated_at, title='CSV Export', sub_headers=None, preface
     table_wrapper = E.div(E.div(table, {'class': 'table-inner'}), {'class': 'table-scroll'})
 
     subtitle = cell_to_element(
-        'h2', f'{title} — generated {time_util.to_display(generated_at).strftime("%d_%m_%y_%H_%M %Z")}'
+        'h2', f'{title} — generated {time_util.format_display_time(generated_at)}'
     )
 
     body_children = []

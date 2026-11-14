@@ -33,3 +33,11 @@ def parse_utc_iso(value: str) -> datetime:
 def to_display(dt: datetime) -> datetime:
     """Convert an aware datetime to the display zone."""
     return dt.astimezone(get_display_tz())
+
+
+def format_display_time(dt: datetime) -> str:
+    """Format an aware datetime in the display zone as e.g. '21:23 CST Nov 12th 2026'."""
+    local = to_display(dt)
+    day = local.day
+    suffix = 'th' if 11 <= day % 100 <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+    return f'{local.strftime("%H:%M %Z %b")} {day}{suffix} {local.year}'
