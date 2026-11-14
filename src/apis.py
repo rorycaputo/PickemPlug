@@ -126,7 +126,7 @@ def espn_chunk_get(url):
     response, session = call_get_api_with_session(url, headers=headers)
     return response.content.decode('utf-8'), session
 
-def espn_startup_get(startup_sha, session):
+def espn_startup_get(startup_sha, app_version, session):
     espn_startup_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{startup_sha}?operationName=Startup&variables=%7B%22connectToken%22%3A%221c5d8xeornbn3t5nr57bv5ns141gky%22%2C%22latLongParams%22%3A%7B%22accuracy%22%3A20%2C%22latitude%22%3A39.7638164%2C%22longitude%22%3A-89.7408708%7D%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{startup_sha}%22%7D%7D'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0',
@@ -136,10 +136,10 @@ def espn_startup_get(startup_sha, session):
         'Referer': 'https://sportsbook.thescore.bet/',
         'content-type': 'application/json',
         'apollographql-client-name': 'espnbet-espnbet-web',
-        'apollographql-client-version': '26.21.0', # todo get some of these from previous API calls
+        'apollographql-client-version': app_version,
         'x-install-id': '2jo2djanm6c11cybd79sjbz1pqup21',
         'x-platform': 'web',
-        'x-app-version': '26.21.0',
+        'x-app-version': app_version,
         'x-app': 'espnbet',
         'x-client': 'espnbet',
         'x-dma': '602',
@@ -158,7 +158,7 @@ def espn_startup_get(startup_sha, session):
     response, session = call_get_api_with_session(espn_startup_url, headers=headers, session=session)
     return response.json(), session
 
-def espn_marketplace_get(marketplace_sha, bearer_token, session):
+def espn_marketplace_get(marketplace_sha, bearer_token, app_version, session):
     espn_marketplace_url = f'https://sportsbook.us-il.thescore.bet/graphql/persisted_queries/{marketplace_sha}?operationName=CompetitionPageSectionLinesTabNode&variables=%7B%22isSubscription%22%3Afalse%2C%22pageType%22%3A%22PAGE%22%2C%22includeRecommendedProps%22%3Atrue%2C%22isBrandingImageEnabled%22%3Atrue%2C%22isNewFeaturedBetParticipantLogoEnabled%22%3Atrue%2C%22isFeaturedBetCarouselHeaderRedesignEnabled%22%3Atrue%2C%22includeStandardizedBoxscore%22%3Atrue%2C%22isCfpRankingEnabled%22%3Atrue%2C%22isCombatSportsRedesignEnabled%22%3Atrue%2C%22isFeaturedMarketCardRedesignEnabled%22%3Atrue%2C%22isDsModelRecommendedPropsEnabled%22%3Afalse%2C%22isBlueprintUiFieldEnabled%22%3Afalse%2C%22includeRichEvent%22%3Atrue%2C%22oddsFormat%22%3A%22AMERICAN%22%2C%22sectionId%22%3A%22Section%3A647c3091-b79f-47bc-a96c-b053cc3a4a6a%22%2C%22selectedFilterId%22%3A%22%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22{marketplace_sha}%22%7D%7D'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0',
@@ -168,10 +168,10 @@ def espn_marketplace_get(marketplace_sha, bearer_token, session):
         'Referer': 'https://sportsbook.thescore.bet/',
         'content-type': 'application/json',
         'apollographql-client-name': 'espnbet-espnbet-web',
-        'apollographql-client-version': '26.21.0',
+        'apollographql-client-version': app_version,
         'x-install-id': '2jo2djanm6c11cybd79sjbz1pqup21',
         'x-platform': 'web',
-        'x-app-version': '26.21.0',
+        'x-app-version': app_version,
         'x-app': 'espnbet',
         'x-client': 'espnbet',
         'x-anonymous-authorization': f'Bearer {bearer_token}', 

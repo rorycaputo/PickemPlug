@@ -42,3 +42,14 @@ This app runs in two places, and they have different capabilities:
   `build/deploys.log` gets one line per run.
 - The build needs `pipenv` and Python 3.14, and downloads Linux wheels, so it
   works from Windows.
+
+## ESPN Bet (theScore) scraping
+
+- The app version sent as `x-app-version` / `apollographql-client-version` is
+  read at run time from the `pages/index-*.js` chunk (`espn_bet.get_app_version`),
+  never hardcoded.
+- The site's bundle format drifts: the constant has appeared both as
+  `NEXT_PUBLIC_PACKAGE_JSON_VERSION||"x.y.z"` and as
+  `NEXT_PUBLIC_PACKAGE_JSON_VERSION:"x.y.z"`. If the fetch fails with
+  "Could not find the ESPN Bet app version", inspect the live chunk and
+  adjust the regex rather than adding a fallback literal.

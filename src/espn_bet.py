@@ -34,6 +34,12 @@ def get_sha_token(chunk_blob, op_name):
     re_exp = f'"{op_name}":"([^"]+)"'
     return re.search(re_exp, chunk_blob).group(1)
 
+def get_app_version(chunk_blob):
+    match = re.search(r'NEXT_PUBLIC_PACKAGE_JSON_VERSION\s*(?::|\|\|)\s*"(\d+(?:\.\d+)+)"', chunk_blob)
+    if not match:
+        raise ValueError('Could not find the ESPN Bet app version (NEXT_PUBLIC_PACKAGE_JSON_VERSION) in the page script')
+    return match.group(1)
+
 def get_bearer_token(startup_resp):
     return startup_resp['data']['startup']['anonymousToken']
 
@@ -42,9 +48,10 @@ def make_api_calls():
     espn_chunk, session = apis.espn_chunk_get(espn_chunk_url)
     startup_sha = get_sha_token(espn_chunk, 'Startup')
     marketplace_sha = get_sha_token(espn_chunk, 'CompetitionPageSectionLinesTabNode')
-    bearer_token_resp, session = apis.espn_startup_get(startup_sha, session) # If this is giving 403s try updating x-app-version headers
+    app_version = get_app_version(espn_chunk)
+    bearer_token_resp, session = apis.espn_startup_get(startup_sha, app_version, session)
     bearer_token = get_bearer_token(bearer_token_resp)
-    espn_marketplace_resp, session = apis.espn_marketplace_get(marketplace_sha, bearer_token, session)
+    espn_marketplace_resp, session = apis.espn_marketplace_get(marketplace_sha, bearer_token, app_version, session)
     if espn_marketplace_resp is not None:
         print(f'Writing ESPN Bet json to {SAVED_DATA_KEY} for later use')
         storage.write_text(SAVED_DATA_KEY, espn_marketplace_resp.text)
