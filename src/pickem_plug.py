@@ -30,7 +30,6 @@ class RunConfig:
     fetch_draftkings: bool = True
     fetch_espnbet: bool = True
     fetch_oddshark: bool = True
-    # todo Make it so the week number output is accurate
     override_csv_data: Optional[str] = None
 
     @classmethod
@@ -84,7 +83,7 @@ def run(config=None):
     if config.override_csv_data is not None:
         csv_util.get_generated_at(config.override_csv_data)
     now = time_util.now()
-    nfl_week = date_util.get_nfl_week(now)
+    # todo In CSV override mode the live lines are still fetched and the console table printed using the current time; make an override run a pure re-render of the CSV
     pickem_lines = pickem.get_pickem_lines(config.fetch_pickem)
     os_lines = odds_shark.get_odds_shark_spreads(config.fetch_oddshark, now)
     dk_lines = draft_kings.get_draft_kings_lines(config.fetch_draftkings, now)
@@ -106,9 +105,11 @@ def run(config=None):
         output_csv = csv_util.stamped_filename(CSV_OUTPUT_KEY_BASE, now)
         csv_text = csv_util.build_csv(final_tabulate_dict)
         storage.write_text(output_csv, csv_text)
+    generated_at = csv_util.get_generated_at(output_csv)
+    nfl_week = date_util.get_nfl_week(generated_at)
     html_text = html_util.render_html(
         csv_util.parse_csv(csv_text),
-        generated_at=csv_util.get_generated_at(output_csv),
+        generated_at=generated_at,
         title=f'{HTML_HEADER_TEXT}{nfl_week} - Pickem',
         header_text=f'{HTML_HEADER_TEXT}{nfl_week}',
         sub_headers=[SPREAD_HEADER, ODDS_HEADER, DIFF_HEADER],
