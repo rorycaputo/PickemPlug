@@ -362,7 +362,7 @@ def build_html(rows, generated_at, title='CSV Export', sub_headers=None, preface
             h1 { font-size: 1.2rem; }
             h2 { font-size: 0.95rem; }
             table.data-table { font-size: 0.85rem; }
-            table.data-table th { font-size: calc(0.85rem + 1pt); }
+            table.data-table th { font-size: 0.85rem; }
             table.data-table th, table.data-table td { padding: 5px 6px; }
         }
     """)
