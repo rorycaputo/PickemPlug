@@ -8,18 +8,20 @@ from lxml import etree, html
 import apis as apis
 import storage as storage
 
+LOBBY_URL = 'https://picks.cbssports.com/football/lobby'
+GAME_INSTANCE_UID = 'cbs-football-pickem-manager'
+POOL_NAME = 'NFL 5 Alive'
+
+LOGGED_OUT_PATHS = ('/login', '/join')
+REQUEST_TIMEOUT_SECONDS = 30
+
+CREDENTIAL_VARS = ('PICKEM_EMAIL', 'PICKEM_PASSWORD')
 SAVED_PAGE_KEY = 'cache/pickem.html'
 AUTH_VERSION = 1
 # Cookies that carry the CBS login; the rest of the browser's cookies are consent/analytics.
 # Live testing showed the pool page needs `pid`; auth_session/auth_state alone get redirected to /join.
 AUTH_COOKIE_NAMES = ('auth_session', 'auth_state', 'pid')
 AUTH_COOKIE_FIELDS = ('name', 'value', 'domain', 'path', 'secure', 'httpOnly', 'expiry')
-POOL_URL = 'https://picks.cbssports.com/football/pickem/pools/kbxw63b2geztqnjuha2ds===?entryId=ivxhi4tzhizdcnbrgm2tinbs'
-LOGGED_OUT_PATHS = ('/login', '/join')
-REQUEST_TIMEOUT_SECONDS = 30
-# pickem_html_url = 'https://picks.cbssports.com/football/pickem/pools/kbxw63b2geztqnjuha2ds===?entryId=ivxhi4tzhizdcnbrgm2tinbs'
-
-CREDENTIAL_VARS = ('PICKEM_EMAIL', 'PICKEM_PASSWORD')
 
 
 def get_credentials():
@@ -80,27 +82,63 @@ def load_auth_cookies():
     return cookies
 
 
-def is_logged_in_pickem_page(response):
-    """A 200 login page is the usual failure, so check the final URL and that spreads are actually present."""
-    path = urlparse(response.url).path
-    return (response.status_code == 200
-            and not any(marker in path for marker in LOGGED_OUT_PATHS)
+def is_logged_in_lobby(response, pool_names):
+    """A logged-out lobby isn't redirected; it just lists no pool memberships. (Error statuses already raised in apis.get.)"""
+    return bool(pool_names) and not any(marker in urlparse(response.url).path for marker in LOGGED_OUT_PATHS)
+
+
+def is_pool_page_with_spreads(response):
+    """The lobby has already confirmed the login, so this mainly checks that spreads are actually present."""
+    return (not any(marker in urlparse(response.url).path for marker in LOGGED_OUT_PATHS)
             and 'data-cy="spread"' in response.text)
 
 
-def fetch_pickem_html_with_session(cookies, url=POOL_URL):
-    """Request the pool page with the saved cookies. Returns the page HTML, or None if not logged in or the request failed."""
+def find_pool_url(page_html):
+    """Find the pool in the lobby's embedded memberships. Returns (pool URL or None, sorted pool names seen).
+    The lobby embeds Apollo SSR state that isn't pure JSON, but each "memberships" array is, so only those are decoded."""
+    decoder = json.JSONDecoder()
+    names = set()
+    marker = '"memberships":'
+    start = page_html.find(marker)
+    while start != -1:
+        try:
+            members, _ = decoder.raw_decode(page_html, start + len(marker))
+        except ValueError:
+            members = []
+        for member in members if isinstance(members, list) else []:
+            pool = member.get('pool') if isinstance(member, dict) else None
+            if not isinstance(pool, dict) or not pool.get('name'):
+                continue
+            names.add(pool['name'])
+            if pool.get('gameInstanceUid') == GAME_INSTANCE_UID and pool['name'] == POOL_NAME and pool.get('url'):
+                return pool['url'], sorted(names)
+        start = page_html.find(marker, start + len(marker))
+    return None, sorted(names)
+
+
+def fetch_pickem_html_with_session(cookies):
+    """Find the pool in the lobby, then request its page, with the saved cookies. Returns the page HTML, or None if
+    not logged in or a request failed. Raises if logged in but the pool isn't in the lobby, since a login won't help."""
     with apis.new_session() as session:
         for cookie in cookies:
             session.cookies.set(cookie['name'], cookie['value'],
                                 domain=cookie.get('domain') or '.cbssports.com', path=cookie.get('path') or '/')
         try:
-            response = apis.get(session, url, headers=apis.NAVIGATION_HEADERS, timeout=REQUEST_TIMEOUT_SECONDS)
+            lobby = apis.get(session, LOBBY_URL, headers=apis.NAVIGATION_HEADERS, timeout=REQUEST_TIMEOUT_SECONDS)
+            pool_url, pool_names = find_pool_url(lobby.text)
+            if not is_logged_in_lobby(lobby, pool_names):
+                print('Saved Pickem session was not accepted (the lobby shows no pool memberships)')
+                return None
+            if pool_url is None:
+                raise RuntimeError(f'Pickem pool "{POOL_NAME}" ({GAME_INSTANCE_UID}) not found in the lobby; '
+                                   f'its pools are: {", ".join(pool_names)}')
+            response = apis.get(session, pool_url, headers=apis.NAVIGATION_HEADERS, timeout=REQUEST_TIMEOUT_SECONDS)
         except requests.RequestException as err:
             print(f'Pickem request failed: {err}')
             return None
-    if not is_logged_in_pickem_page(response):
-        print('Saved Pickem session was not accepted')
+    if not is_pool_page_with_spreads(response):
+        print(f'Pickem pool page had no spreads (landed on {urlparse(response.url).path}, '
+              f'status {response.status_code})')
         return None
     return response.text
 

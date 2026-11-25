@@ -4,6 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import traceback
+import pickem
 
 DEBUG_SCREENSHOT = 'selenium_failure.png'
 STARTUP_ATTEMPTS = 2
@@ -22,12 +23,12 @@ def _start_driver():
 
 
 def get_pickem_html(u, p):
-    """Log in and return (page_source, cookies), or None if the login or page load fails."""
+    """Log in from the lobby, open the pool, and return (page_source, cookies), or None if any step fails."""
     print('Starting Selenium Driver to fetch Pickem spreads...')
     driver = None
     try:
         driver = _start_driver()
-        driver.get("https://picks.cbssports.com/football/pickem/pools/kbxw63b2geztqnjuha2ds/join?device=desktop%2Cdesktop&poolId=kbxw63b2geztqnjuha2ds&returnUrl=https%3A%2F%2Fpicks.cbssports.com%2Ffootball%2Fpickem%2Fpools%2Fkbxw63b2geztqnjuha2ds%3Fdevice%3Ddesktop%26device%3Ddesktop")
+        driver.get(pickem.LOBBY_URL)
 
         wait = WebDriverWait(driver, 20)
         login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Log In')]")))
@@ -41,6 +42,10 @@ def get_pickem_html(u, p):
 
         continue_button = driver.find_element(By.XPATH, "//button[@type='submit']")
         continue_button.click()
+
+        # CBS redirects back to the lobby; the pool shows up in its memberships once the login has taken effect.
+        pool_url = WebDriverWait(driver, 30).until(lambda d: pickem.find_pool_url(d.page_source)[0])
+        driver.find_element(By.XPATH, f"//a[starts-with(@href, '{pool_url}')]").click()
 
         WebDriverWait(driver, 30).until(EC.visibility_of_element_located((By.XPATH, "//div[@data-cy='spread']")))
         pickem_html = driver.page_source
