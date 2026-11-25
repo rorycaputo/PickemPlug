@@ -13,10 +13,12 @@
 """
 import argparse
 import base64
+import glob
 import hashlib
 import json
 import os
 import re
+import shutil
 import sys
 import zipfile
 from datetime import datetime, timezone
@@ -174,10 +176,11 @@ def cmd_env_json(args):
     print(json.dumps({'Variables': load_config(args.config)['environment']}))
 
 
-def package_files(pkg_dir):
-    """Relative paths under pkg_dir in a stable order, skipping bytecode caches."""
+def package_files(walk_dir, pkg_dir=None):
+    """Paths under walk_dir, relative to pkg_dir (default walk_dir), in a stable order, skipping bytecode caches."""
+    pkg_dir = pkg_dir or walk_dir
     paths = []
-    for root, dirs, files in os.walk(pkg_dir):
+    for root, dirs, files in os.walk(walk_dir):
         dirs[:] = sorted(d for d in dirs if d != '__pycache__')
         for name in sorted(files):
             if not name.endswith('.pyc'):
@@ -186,9 +189,40 @@ def package_files(pkg_dir):
     return paths
 
 
+# Dead weight in the Lambda package, as glob patterns relative to the package dir.
+# - bin/: pip's console-script launchers, which are Windows .exe files when built from Windows.
+# - lxml.objectify and lxml.html.diff (+ its _difflib/_diffcommand helpers): optional lxml
+#   modules that nothing imports; the app only uses lxml.etree and lxml.html.
+# A pattern that matches nothing is fine (package layouts drift between versions).
+PRUNE = (
+    'bin',
+    'lxml/objectify.*',
+    'lxml/html/diff.*',
+    'lxml/html/_difflib.*',
+    'lxml/html/_diffcommand.*',
+)
+
+
+def prune_package(pkg_dir):
+    """Delete the PRUNE paths from pkg_dir; return the relative paths removed."""
+    removed = []
+    for pattern in PRUNE:
+        for path in glob.glob(os.path.join(pkg_dir, pattern)):
+            if os.path.isdir(path):
+                removed.extend(package_files(path, pkg_dir))
+                shutil.rmtree(path)
+            else:
+                removed.append(os.path.relpath(path, pkg_dir).replace(os.sep, '/'))
+                os.remove(path)
+    return sorted(removed)
+
+
 def cmd_package(args):
     pkg_dir = os.path.join(args.run_dir, 'pkg')
     zip_path = os.path.join(args.run_dir, 'package.zip')
+    removed = prune_package(pkg_dir)
+    if removed:
+        print(f'Pruned {len(removed)} files: {", ".join(removed)}')
     paths = package_files(pkg_dir)
 
     windows = [p for p in paths if p.lower().endswith('.pyd') or 'win_amd64' in p.lower()]
